@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Sparkles, Layers, CheckCircle2, AlertCircle, Plus, Trash2, Flame } from 'lucide-react';
 import { useERP } from '../../context/ERPContext';
 import { LeadCustomerType, LeadSource, PaymentMethod } from '../../types/erp';
 
@@ -13,6 +13,7 @@ export const QuickCreateModals: React.FC = () => {
     createSalesOrder,
     stockInRawMaterial,
     createProductionOrder,
+    createExtrusionSession,
     recordPayment,
     fabricators,
     dealers,
@@ -60,20 +61,23 @@ export const QuickCreateModals: React.FC = () => {
   const [stockQty, setStockQty] = useState(1000);
   const [stockNotes, setStockNotes] = useState('Received fresh batch against Purchase Order');
 
-  // Production Order State
-  const [poProfileMode, setPoProfileMode] = useState<'catalog' | 'manual'>('catalog');
-  const [poProdId, setPoProdId] = useState(products[0]?.id || 'PRD-001');
-  const [poCustomName, setPoCustomName] = useState('');
-  const [poCustomCode, setPoCustomCode] = useState('');
-  const [poCustomCategory, setPoCustomCategory] = useState('Sliding Profile');
-  const [poCustomColor, setPoCustomColor] = useState('White');
-  const [poCustomWeight, setPoCustomWeight] = useState(1.45);
+  // Production Order & Chemical Compounding State
+  const [poProfileName, setPoProfileName] = useState('3-Track Casement Window Frame (60mm Heavy Series)');
+  const [poProfileCode, setPoProfileCode] = useState('SCF-CS-3T-60');
+  const [poCustomColor, setPoCustomColor] = useState('White (Standard UV)');
+  const [poCustomWeight, setPoCustomWeight] = useState(2.65);
   const [poOrderId, setPoOrderId] = useState(salesOrders[0]?.id || 'SO-2026-1082');
-  const [poQtyUnit, setPoQtyUnit] = useState<'meters' | 'sets'>('meters');
-  const [poQty, setPoQty] = useState(2000);
-  const [poBundles, setPoBundles] = useState(55);
   const [poLine, setPoLine] = useState('Extruder Line 02 (KraussMaffei KM-65)');
   const [poCustomError, setPoCustomError] = useState('');
+
+  // 3 to 5 Chemicals for the UPVC compounding batch
+  const [poChemicals, setPoChemicals] = useState<{ id: string; name: string; quantityKg: number }[]>([
+    { id: 'chem-1', name: 'UPVC Resin SG-5 / K-67', quantityKg: 2350 },
+    { id: 'chem-2', name: 'Calcium Carbonate (CaCO3 Filler)', quantityKg: 450 },
+    { id: 'chem-3', name: 'Rutile TiO2 (Titanium Dioxide R-902)', quantityKg: 75 },
+    { id: 'chem-4', name: 'Ca-Zn Heat Stabilizer & Lubricant Pack', quantityKg: 65 },
+    { id: 'chem-5', name: 'CPE 135A High Impact Modifier', quantityKg: 55 },
+  ]);
 
   // Payment State
   const [payOrderId, setPayOrderId] = useState(salesOrders[0]?.id || 'SO-2026-1082');
@@ -90,7 +94,7 @@ export const QuickCreateModals: React.FC = () => {
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] z-50 flex items-center justify-center p-4">
-      <div className={`bg-white border border-slate-200 rounded-lg shadow-2xl w-full ${quickCreateModal === 'production' ? 'max-w-xl' : 'max-w-lg'} overflow-hidden max-h-[92vh] flex flex-col`}>
+      <div className={`bg-white border border-slate-200 rounded-lg shadow-2xl w-full ${quickCreateModal === 'production' ? 'max-w-2xl' : 'max-w-lg'} overflow-hidden max-h-[92vh] flex flex-col`}>
         {/* Header */}
         <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
           <h3 className="text-sm font-bold tracking-tight uppercase">
@@ -556,185 +560,169 @@ export const QuickCreateModals: React.FC = () => {
           )}
 
           {quickCreateModal === 'production' && (() => {
-            const selectedCatalogProd =
-              products.find((p) => p.id === poProdId) ||
-              products.find((p) => p.itemType === 'UPVC Profile') ||
-              products[0];
+            const totalCompoundKg = poChemicals.reduce(
+              (sum, c) => sum + (Number(c.quantityKg) || 0),
+              0
+            );
+            const linearWeight = poCustomWeight > 0 ? poCustomWeight : 2.65;
+            const calculatedOutputMeters =
+              linearWeight > 0 ? Math.round(totalCompoundKg / linearWeight) : 0;
 
-            const effectiveWeightPerMeter =
-              poProfileMode === 'manual'
-                ? poCustomWeight > 0
-                  ? poCustomWeight
-                  : 1.45
-                : selectedCatalogProd?.weightPerMeterKg || 1.45;
+            const profilePresets = [
+              { name: '3-Track Casement Window Frame (60mm Heavy)', code: 'SCF-CS-3T-60', weight: 2.65 },
+              { name: '3-Track Sliding Villa Frame (112mm Heavy)', code: 'SCF-SL-112-3T', weight: 2.85 },
+              { name: '2-Track Sliding Window Frame (78mm)', code: 'SCF-SL-78-2T', weight: 1.85 },
+              { name: 'Casement Window Sash (60mm Z-Section)', code: 'SCF-CS-SASH-60', weight: 1.45 },
+            ];
 
-            const effectiveMeters =
-              poQtyUnit === 'meters' ? Math.max(1, poQty) : Math.max(1, poBundles) * 36;
-            const effectiveBundles =
-              poQtyUnit === 'meters' ? Math.floor(poQty / 36) : poBundles;
+            const handleAddChemical = (name = '', qty = 50) => {
+              setPoChemicals((prev) => [
+                ...prev,
+                { id: `c-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: name || 'New Chemical / Additive', quantityKg: qty },
+              ]);
+            };
 
-            const estCompoundKg = effectiveMeters * effectiveWeightPerMeter;
-            const estResinKg = Math.round(estCompoundKg * 0.78);
-            const estCaCO3Kg = Math.round(estCompoundKg * 0.15);
-            const estTiO2Kg = Math.round(estCompoundKg * 0.022);
+            const handleUpdateName = (id: string, name: string) => {
+              setPoChemicals((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+            };
+
+            const handleUpdateKg = (id: string, qty: number) => {
+              setPoChemicals((prev) => prev.map((c) => (c.id === id ? { ...c, quantityKg: Math.max(0, qty) } : c)));
+            };
+
+            const handleRemoveChemical = (id: string) => {
+              if (poChemicals.length <= 1) return;
+              setPoChemicals((prev) => prev.filter((c) => c.id !== id));
+            };
 
             return (
               <>
-                {/* Profile Selection / Manual Entry Toggle */}
-                <div className="space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <label className="block font-bold text-slate-800">
-                      UPVC Profile to Extrude *
-                    </label>
-                    <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200 text-[11px] font-semibold self-start sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPoProfileMode('catalog');
-                          setPoCustomError('');
-                        }}
-                        className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                          poProfileMode === 'catalog'
-                            ? 'bg-white text-red-600 shadow-2xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        📋 Select from Catalog
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPoProfileMode('manual');
-                          setPoCustomError('');
-                        }}
-                        className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                          poProfileMode === 'manual'
-                            ? 'bg-white text-red-600 shadow-2xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        ✏️ Custom / New Profile Name
-                      </button>
+                {/* Profile Information & Color */}
+                <div className="space-y-3">
+                  {/* Quick Profile Presets */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Quick Profile Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {profilePresets.map((pre) => (
+                        <button
+                          key={pre.code}
+                          type="button"
+                          onClick={() => {
+                            setPoProfileName(pre.name);
+                            setPoProfileCode(pre.code);
+                            setPoCustomWeight(pre.weight);
+                            setPoCustomError('');
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors cursor-pointer ${
+                            poProfileName === pre.name
+                              ? 'bg-red-50 text-red-700 border-red-300 font-bold'
+                              : 'bg-slate-100 hover:bg-white text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {pre.name.split('(')[0]}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {poProfileMode === 'catalog' ? (
+                  {/* Profile Name & Code */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Name of the Profile *
+                      </label>
+                      <input
+                        type="text"
+                        value={poProfileName}
+                        onChange={(e) => {
+                          setPoProfileName(e.target.value);
+                          setPoCustomError('');
+                        }}
+                        placeholder="e.g. 3-Track Casement Window Frame (60mm Heavy Series)"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 text-xs"
+                      />
+                    </div>
                     <div>
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Profile Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={poProfileCode}
+                        onChange={(e) => setPoProfileCode(e.target.value)}
+                        placeholder="e.g. SCF-CS-3T-60"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-mono text-slate-800 text-xs focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Color Name (Manual Entry, No Dropdown) & Linear Weight */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Color Name (Manual Entry) *
+                      </label>
+                      <input
+                        type="text"
+                        value={poCustomColor}
+                        onChange={(e) => setPoCustomColor(e.target.value)}
+                        placeholder="e.g. White, Off-White, Anthracite Grey, Walnut Wood Grain, Golden Oak"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Linear Weight (kg/m) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.05"
+                        min="0.2"
+                        max="8.0"
+                        value={poCustomWeight}
+                        onChange={(e) => setPoCustomWeight(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-mono text-slate-800 text-xs focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Extruder Line & Linked Sales Order */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Extruder Line
+                      </label>
                       <select
-                        value={poProdId}
-                        onChange={(e) => setPoProdId(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium text-slate-800 focus:outline-none focus:border-red-500"
+                        value={poLine}
+                        onChange={(e) => setPoLine(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs font-medium focus:border-red-500 focus:outline-none"
                       >
-                        {products
-                          .filter((p) => p.itemType === 'UPVC Profile')
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.code} — {p.name} ({p.color})
-                            </option>
-                          ))}
+                        <option value="Extruder Line 01 (KraussMaffei KM-65)">Extruder Line 01 (KraussMaffei KM-65)</option>
+                        <option value="Extruder Line 02 (KraussMaffei KM-65)">Extruder Line 02 (KraussMaffei KM-65)</option>
+                        <option value="Extruder Line 03 (Cincinnati Twin)">Extruder Line 03 (Cincinnati Twin)</option>
+                        <option value="Extruder Line 04 (Cincinnati Milacron)">Extruder Line 04 (Cincinnati Milacron)</option>
                       </select>
-                      {selectedCatalogProd && (
-                        <div className="mt-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-1">
-                          <span>
-                            <strong>{selectedCatalogProd.category}</strong> • Weight:{' '}
-                            <strong>{selectedCatalogProd.weightPerMeterKg} kg/m</strong>
-                          </span>
-                          <span className="font-mono text-slate-500">
-                            Current Stock: {selectedCatalogProd.currentStock.toLocaleString('en-IN')} {selectedCatalogProd.unit}
-                          </span>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <div className="p-3 bg-red-50/50 border border-red-200 rounded-lg space-y-2.5">
-                      <div className="flex items-center gap-1.5 text-red-800 font-semibold text-[11px]">
-                        <Sparkles className="w-3.5 h-3.5 text-red-600" />
-                        <span>Custom Profile Extrusion / NPD Run (Manual Specification)</span>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          Custom Profile / Product Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={poCustomName}
-                          onChange={(e) => {
-                            setPoCustomName(e.target.value);
-                            setPoCustomError('');
-                          }}
-                          placeholder="e.g. 3-Track Heavy Duty Sliding Frame (Custom 88mm Series)"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Profile Code / Reference (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={poCustomCode}
-                            onChange={(e) => setPoCustomCode(e.target.value)}
-                            placeholder="e.g. SCF-CUST-88T"
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-mono text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Linear Weight (kg/meter) *
-                          </label>
-                          <input
-                            type="number"
-                            step="0.05"
-                            min="0.2"
-                            max="8.0"
-                            value={poCustomWeight}
-                            onChange={(e) => setPoCustomWeight(Number(e.target.value))}
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-mono text-slate-800 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Profile Category
-                          </label>
-                          <select
-                            value={poCustomCategory}
-                            onChange={(e) => setPoCustomCategory(e.target.value)}
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white text-slate-800"
-                          >
-                            <option value="Sliding Profile">Sliding Profile (2-Track / 3-Track)</option>
-                            <option value="Frame Profile">Frame Profile (Casement 60mm)</option>
-                            <option value="Sash Profile">Sash Profile (Door & Window)</option>
-                            <option value="Mullion / Transom">Mullion / Transom</option>
-                            <option value="Glazing Bead">Glazing Bead</option>
-                            <option value="Custom Section">Custom Architectural Section</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Color / Foil Finish
-                          </label>
-                          <select
-                            value={poCustomColor}
-                            onChange={(e) => setPoCustomColor(e.target.value)}
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white text-slate-800"
-                          >
-                            <option value="White">White (Standard UV)</option>
-                            <option value="Anthracite Grey">Anthracite Grey (Foil)</option>
-                            <option value="Walnut Wood">Walnut Wood Grain</option>
-                            <option value="Golden Oak">Golden Oak</option>
-                            <option value="Dark Bronze">Dark Bronze</option>
-                            <option value="Black">Architectural Black</option>
-                          </select>
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                        Linked Sales Order (Optional)
+                      </label>
+                      <select
+                        value={poOrderId}
+                        onChange={(e) => setPoOrderId(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs focus:border-red-500 focus:outline-none"
+                      >
+                        <option value="">Stock Replenishment (No Order)</option>
+                        {salesOrders.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.id} — {o.fabricatorName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
+                  </div>
 
                   {poCustomError && (
                     <div className="p-2 bg-red-100 text-red-700 text-xs rounded border border-red-200 flex items-center gap-1.5">
@@ -744,171 +732,182 @@ export const QuickCreateModals: React.FC = () => {
                   )}
                 </div>
 
-                {/* Linked Order & Extrusion Line */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">
-                      Linked Sales Order
-                    </label>
-                    <select
-                      value={poOrderId}
-                      onChange={(e) => setPoOrderId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800"
-                    >
-                      <option value="">Stock Replenishment (No Order)</option>
-                      {salesOrders.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.id} — {o.fabricatorName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">
-                      Assign Extruder Line
-                    </label>
-                    <select
-                      value={poLine}
-                      onChange={(e) => setPoLine(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800"
-                    >
-                      <option value="Extruder Line 01 (KraussMaffei KM-65)">
-                        Extruder Line 01 (KraussMaffei KM-65)
-                      </option>
-                      <option value="Extruder Line 02 (KraussMaffei KM-65)">
-                        Extruder Line 02 (KraussMaffei KM-65)
-                      </option>
-                      <option value="Extruder Line 03 (Cincinnati Twin)">
-                        Extruder Line 03 (Cincinnati Twin)
-                      </option>
-                      <option value="Extruder Line 04 + Lamination">
-                        Extruder Line 04 + Lamination
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Required Quantity with Meters / Sets of 6 Toggle */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-800">
-                      Required Production Quantity *
-                    </label>
-                    <div className="inline-flex items-center bg-white p-0.5 rounded border border-slate-300 text-[10px] font-semibold">
-                      <button
-                        type="button"
-                        onClick={() => setPoQtyUnit('meters')}
-                        className={`px-2 py-0.5 rounded ${
-                          poQtyUnit === 'meters'
-                            ? 'bg-slate-900 text-white font-bold'
-                            : 'text-slate-600'
-                        }`}
-                      >
-                        Meters
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPoQtyUnit('sets');
-                          setPoBundles(Math.max(1, Math.round(poQty / 36)));
-                        }}
-                        className={`px-2 py-0.5 rounded ${
-                          poQtyUnit === 'sets'
-                            ? 'bg-slate-900 text-white font-bold'
-                            : 'text-slate-600'
-                        }`}
-                      >
-                        Sets of 6 Pcs
-                      </button>
+                {/* Dry Blend Compound Formulation: Chemical Name, Quantity (kg), + Add Chemical */}
+                <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/50 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
+                    <div>
+                      <span className="font-bold uppercase tracking-wider text-slate-800 text-[11px] block">
+                        Dry Blend Chemicals (Mix 3 to 5 Chemicals for Session)
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        Compounding mix formula required to produce this profile output.
+                      </span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddChemical('', 50)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[11px] cursor-pointer self-start sm:self-auto transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>+ Add Chemical</span>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                    {poQtyUnit === 'meters' ? (
-                      <div>
-                        <input
-                          type="number"
-                          step={10}
-                          min={36}
-                          value={poQty}
-                          onChange={(e) => setPoQty(Number(e.target.value))}
-                          className="w-full px-3 py-1.5 border border-slate-300 rounded-md bg-white font-mono font-bold text-slate-900"
-                        />
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          = {effectiveBundles} Sets of 6 pcs ({effectiveBundles * 6} bars of 6m)
-                          {poQty % 36 !== 0 ? ` + ${poQty % 36}m remaining` : ''}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            value={poBundles}
-                            onChange={(e) => setPoBundles(Math.max(1, Number(e.target.value)))}
-                            className="w-24 px-3 py-1.5 border border-slate-300 rounded-md bg-white font-mono font-bold text-slate-900"
-                          />
-                          <span className="font-semibold text-slate-700">Sets of 6 Pcs</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          = {effectiveMeters.toLocaleString('en-IN')} meters ({effectiveBundles * 6} bars)
-                        </div>
-                      </div>
-                    )}
+                  {/* Chemicals Table */}
+                  <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
+                          <th className="py-2 px-3">Chemical Name</th>
+                          <th className="py-2 px-3 text-right w-36">Quantity (kg)</th>
+                          <th className="py-2 px-2 text-center w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {poChemicals.map((chem) => (
+                          <tr key={chem.id} className="hover:bg-slate-50/70">
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={chem.name}
+                                onChange={(e) => handleUpdateName(chem.id, e.target.value)}
+                                placeholder="Chemical Name (e.g. UPVC Resin SG-5)"
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-medium text-slate-900 text-xs focus:border-red-500 focus:outline-none"
+                              />
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={chem.quantityKg}
+                                  onChange={(e) => handleUpdateKg(chem.id, Number(e.target.value))}
+                                  className="w-24 px-2 py-1.5 border border-slate-300 rounded bg-white text-right font-mono font-bold text-slate-900 text-xs focus:border-red-500 focus:outline-none"
+                                />
+                                <span className="font-semibold text-slate-600 text-xs">kg</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              {poChemicals.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveChemical(chem.id)}
+                                  className="text-slate-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
+                                  title="Remove Chemical"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                    {/* Compound calculation badge */}
-                    <div className="p-2 bg-white rounded border border-slate-200 text-[11px] font-mono space-y-0.5">
-                      <div className="flex justify-between font-bold text-slate-800">
-                        <span>Dry Blend Compound:</span>
-                        <span className="text-red-600">{estCompoundKg.toLocaleString('en-IN')} kg</span>
+                  {/* 1-Click Chemical Presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-500">Quick Add:</span>
+                    {[
+                      { name: 'PE Wax Internal Lubricant', kg: 25 },
+                      { name: 'ACR-401 Processing Aid', kg: 35 },
+                      { name: 'Stearic Acid Ext. Lubricant', kg: 15 },
+                      { name: 'Optical Brightener OB-1', kg: 3 },
+                    ].map((p) => (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() => handleAddChemical(p.name, p.kg)}
+                        className="px-2 py-0.5 rounded bg-slate-100 hover:bg-red-50 hover:text-red-600 border border-slate-200 text-[10px] font-medium text-slate-700 cursor-pointer transition-colors"
+                      >
+                        + {p.name} ({p.kg}kg)
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Clean Total Compound & Output Calculation Banner */}
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Total Dry Blend Compound Mix
+                      </span>
+                      <div className="font-mono font-bold text-red-600 text-base">
+                        {totalCompoundKg.toLocaleString('en-IN')} kg
                       </div>
-                      <div className="text-[10px] text-slate-500">
-                        Resin SG-5: {estResinKg}kg • CaCO3: {estCaCO3Kg}kg • TiO2: {estTiO2Kg}kg
+                    </div>
+                    <div className="sm:text-right">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        Calculated Profile Output
+                      </span>
+                      <div className="font-mono font-bold text-emerald-700 text-base">
+                        ~{calculatedOutputMeters.toLocaleString('en-IN')} meters ({poCustomWeight} kg/m)
                       </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Modal Footer */}
                 <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium cursor-pointer"
+                    className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium cursor-pointer text-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (poProfileMode === 'manual' && !poCustomName.trim()) {
-                        setPoCustomError('Please enter a name for the custom profile.');
+                      if (!poProfileName.trim()) {
+                        setPoCustomError('Please enter a name for the profile.');
+                        return;
+                      }
+                      if (!poCustomColor.trim()) {
+                        setPoCustomError('Please enter the color name.');
                         return;
                       }
 
+                      const finalCode =
+                        poProfileCode.trim() ||
+                        `SCF-${poProfileName.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+
                       const po = createProductionOrder({
                         orderId: poOrderId || undefined,
-                        productId: poProfileMode === 'catalog' ? poProdId : undefined,
-                        customProfileName:
-                          poProfileMode === 'manual' ? poCustomName.trim() : undefined,
-                        customProfileCode:
-                          poProfileMode === 'manual' ? poCustomCode.trim() || undefined : undefined,
-                        customColor: poProfileMode === 'manual' ? poCustomColor : undefined,
-                        customCategory: poProfileMode === 'manual' ? poCustomCategory : undefined,
-                        customWeightPerMeter:
-                          poProfileMode === 'manual' ? poCustomWeight : undefined,
-                        requiredQuantity: effectiveMeters,
-                        dueDate: '12 Oct 2026',
+                        customProfileName: poProfileName.trim(),
+                        customProfileCode: finalCode,
+                        customColor: poCustomColor.trim(),
+                        customWeightPerMeter: poCustomWeight,
+                        requiredQuantity: calculatedOutputMeters,
+                        dueDate: '15 Oct 2026',
                         extruderLine: poLine,
                       });
+
+                      createExtrusionSession({
+                        dieNumber: `DIE-${finalCode.replace('SCF-', '')}`,
+                        customDieName: poProfileName.trim(),
+                        customProfileCode: finalCode,
+                        customWeightPerMeter: poCustomWeight,
+                        customExtruderLine: poLine,
+                        shift: 'Morning Shift (06:00 - 14:00)',
+                        date: 'Today',
+                        targetBundles: Math.max(1, Math.round(calculatedOutputMeters / 36)),
+                        piecesPerSet: 6,
+                        operatorName: 'Extrusion Floor Supervisor',
+                        linkedOrderId: poOrderId || undefined,
+                        notes: `Chemical Mix: ${poChemicals.map((c) => `${c.name}: ${c.quantityKg}kg`).join(', ')}`,
+                        customFormulaMaterials: poChemicals.map((c) => ({
+                          name: c.name,
+                          quantityKg: c.quantityKg,
+                        })),
+                      });
+
                       closeModal();
                       navigateTo('production', po.id);
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-xs cursor-pointer flex items-center gap-1.5 text-xs transition-colors"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Schedule Production Order</span>
+                    <span>Schedule Extrusion Production Order</span>
                   </button>
                 </div>
               </>
