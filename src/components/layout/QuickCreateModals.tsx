@@ -716,18 +716,15 @@ export const QuickCreateModals: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-800 mb-1">
-                        Extruder Line
+                        Extruder Line (Manual Entry) *
                       </label>
-                      <select
+                      <input
+                        type="text"
                         value={poLine}
                         onChange={(e) => setPoLine(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs font-medium focus:border-red-500 focus:outline-none"
-                      >
-                        <option value="Extruder Line 01 (KraussMaffei KM-65)">Extruder Line 01 (KraussMaffei KM-65)</option>
-                        <option value="Extruder Line 02 (KraussMaffei KM-65)">Extruder Line 02 (KraussMaffei KM-65)</option>
-                        <option value="Extruder Line 03 (Cincinnati Twin)">Extruder Line 03 (Cincinnati Twin)</option>
-                        <option value="Extruder Line 04 (Cincinnati Milacron)">Extruder Line 04 (Cincinnati Milacron)</option>
-                      </select>
+                        placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs font-medium placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
+                      />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-800 mb-1">

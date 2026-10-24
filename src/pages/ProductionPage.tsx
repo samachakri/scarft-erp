@@ -1352,22 +1352,19 @@ export const ProductionPage: React.FC = () => {
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Extruder Line
+                      Extruder Line (Manual Entry) *
                     </label>
-                    <select
+                    <input
+                      type="text"
                       value={sessionCustomLine}
                       onChange={(e) => setSessionCustomLine(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-slate-800 font-medium"
-                    >
-                      <option value="Extruder Line 01 (KraussMaffei KM-65)">Extruder Line 01</option>
-                      <option value="Extruder Line 02 (KraussMaffei KM-65)">Extruder Line 02</option>
-                      <option value="Extruder Line 03 (Cincinnati Twin)">Extruder Line 03</option>
-                      <option value="Extruder Line 04 (Cincinnati Milacron)">Extruder Line 04</option>
-                    </select>
+                      placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-800 font-medium text-xs focus:border-red-500 focus:outline-none"
+                    />
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Select Die from Library
@@ -1393,7 +1390,19 @@ export const ProductionPage: React.FC = () => {
                       value={sessionColor}
                       onChange={(e) => setSessionColor(e.target.value)}
                       placeholder="e.g. White, Anthracite Grey, Walnut, Golden Oak"
-                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800"
+                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Extruder Line (Manual Entry) *
+                    </label>
+                    <input
+                      type="text"
+                      value={sessionCustomLine}
+                      onChange={(e) => setSessionCustomLine(e.target.value)}
+                      placeholder="e.g. Extruder Line 02 or Line 01"
+                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800 text-xs focus:border-red-500 focus:outline-none"
                     />
                   </div>
                 </div>
