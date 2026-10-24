@@ -10,6 +10,7 @@ import {
   History,
   Calculator,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 import { useERP } from '../context/ERPContext';
 import { formatINR, formatINRCompact, formatNumberIN, formatBundlesText } from '../services/rbac';
@@ -24,6 +25,7 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
     stockMovements,
     stockInRawMaterial,
     adjustRawMaterialStock,
+    updateInventoryItemQuantity,
     addProfileBundleStock,
     navigateTo,
   } = useERP();
@@ -56,6 +58,54 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
   const [bundleSetsCount, setBundleSetsCount] = useState(30);
   const [bundleRack, setBundleRack] = useState('Warehouse Rack B-04');
   const [bundleNotes, setBundleNotes] = useState('Received from Line 04 extrusion batch');
+
+  // Direct Quantity Change Modal State (Any item in Inventory)
+  const [changeQtyModalItem, setChangeQtyModalItem] = useState<{
+    id: string;
+    code: string;
+    name: string;
+    category: string;
+    currentAvailable: number;
+    unit: string;
+    isRM: boolean;
+  } | null>(null);
+  const [newQtyValue, setNewQtyValue] = useState<number>(0);
+  const [qtyUnitMode, setQtyUnitMode] = useState<'meters' | 'sets'>('meters');
+  const [changeQtyReason, setChangeQtyReason] = useState<string>('Physical warehouse audit count');
+
+  const openChangeQtyModal = (item: {
+    id: string;
+    code: string;
+    name: string;
+    category: string;
+    available: number;
+    unit: string;
+    isRM: boolean;
+  }) => {
+    setChangeQtyModalItem({
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      category: item.category,
+      currentAvailable: item.available,
+      unit: item.unit,
+      isRM: item.isRM,
+    });
+    setNewQtyValue(item.available);
+    setQtyUnitMode('meters');
+    setChangeQtyReason('Physical warehouse audit count');
+  };
+
+  const handleSaveNewQuantity = () => {
+    if (!changeQtyModalItem) return;
+    updateInventoryItemQuantity(
+      changeQtyModalItem.id,
+      newQtyValue,
+      changeQtyReason,
+      qtyUnitMode
+    );
+    setChangeQtyModalItem(null);
+  };
 
   const selectedRM = selectedRecordId
     ? rawMaterials.find((r) => r.id === selectedRecordId || r.code === selectedRecordId) || null
@@ -276,6 +326,7 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                   <th className="py-2.5 px-3">Unit</th>
                   <th className="py-2.5 px-3 text-right">Minimum Level</th>
                   <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -301,8 +352,11 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                       <td className="py-3 px-4 font-bold text-slate-900">{item.name}</td>
                       <td className="py-3 px-3 font-mono font-bold text-red-600">{item.code}</td>
                       <td className="py-3 px-3 text-slate-600">{item.category}</td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatNumberIN(item.available)}
+                      <td className="py-3 px-3 text-right font-mono">
+                        <div className="font-bold text-slate-900">{formatNumberIN(item.available)} {item.unit}</div>
+                        {item.category === 'UPVC Profile' && (
+                          <div className="text-[10px] text-slate-500 font-sans">{formatBundlesText(item.available)}</div>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-amber-700">
                         {formatNumberIN(item.reserved)}
@@ -327,6 +381,18 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                           {item.status}
                         </span>
                       </td>
+                      <td className="py-3 px-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openChangeQtyModal(item);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-[11px] cursor-pointer shadow-2xs"
+                        >
+                          <Edit3 className="w-3 h-3 text-slate-500" />
+                          <span>Change Qty</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -350,6 +416,7 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                     <th className="py-2.5 px-2.5 text-right">Min Level</th>
                     <th className="py-2.5 px-2.5">Supplier</th>
                     <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -402,6 +469,26 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                             >
                               {rm.status === 'Low' ? 'Low Stock' : rm.status}
                             </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openChangeQtyModal({
+                                  id: rm.id,
+                                  code: rm.code,
+                                  name: rm.name,
+                                  category: rm.category,
+                                  available: rm.availableQuantity,
+                                  unit: rm.unit,
+                                  isRM: true,
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-[11px] cursor-pointer shadow-2xs"
+                            >
+                              <Edit3 className="w-3 h-3 text-slate-500" />
+                              <span>Change Qty</span>
+                            </button>
                           </td>
                         </tr>
                       );
@@ -760,6 +847,145 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                 className="py-1.5 px-3.5 rounded bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer text-xs shadow-xs"
               >
                 Confirm & Stock In {bundleSetsCount} Sets
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal: Change Inventory Quantity for any Item */}
+      {changeQtyModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-red-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Modify Stock Quantity
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {changeQtyModalItem.code} • {changeQtyModalItem.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setChangeQtyModalItem(null)}
+                className="p-1 rounded text-slate-400 hover:text-slate-700 cursor-pointer text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between font-mono">
+                <div>
+                  <div className="text-[10px] font-sans text-slate-500 uppercase font-bold">Current Stock Level</div>
+                  <div className="text-base font-bold text-slate-900 mt-0.5">
+                    {formatNumberIN(changeQtyModalItem.currentAvailable)} {changeQtyModalItem.unit}
+                  </div>
+                  {changeQtyModalItem.category === 'UPVC Profile' && (
+                    <div className="text-[10px] font-sans text-slate-500">
+                      {formatBundlesText(changeQtyModalItem.currentAvailable)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-sans text-slate-500 uppercase font-bold">Category</div>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-200 text-slate-800 font-semibold text-[10px]">
+                    {changeQtyModalItem.category}
+                  </span>
+                </div>
+              </div>
+
+              {changeQtyModalItem.category === 'UPVC Profile' && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Quantity Unit Mode</label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-md text-center font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (qtyUnitMode === 'sets') {
+                          setNewQtyValue(newQtyValue * 36);
+                        }
+                        setQtyUnitMode('meters');
+                      }}
+                      className={`py-1.5 rounded cursor-pointer ${
+                        qtyUnitMode === 'meters' ? 'bg-white text-red-600 shadow-2xs font-bold' : 'text-slate-600'
+                      }`}
+                    >
+                      Meters (Standard 6m Bars)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (qtyUnitMode === 'meters') {
+                          setNewQtyValue(Math.floor(newQtyValue / 36));
+                        }
+                        setQtyUnitMode('sets');
+                      }}
+                      className={`py-1.5 rounded cursor-pointer ${
+                        qtyUnitMode === 'sets' ? 'bg-white text-red-600 shadow-2xs font-bold' : 'text-slate-600'
+                      }`}
+                    >
+                      Sets of 6 Pieces (1 Set = 36m)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  New Adjusted Stock Quantity
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={newQtyValue}
+                    onChange={(e) => setNewQtyValue(Math.max(0, Number(e.target.value)))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded font-mono font-bold text-slate-900 text-sm bg-white"
+                  />
+                  <span className="font-semibold text-slate-600 whitespace-nowrap">
+                    {changeQtyModalItem.category === 'UPVC Profile' && qtyUnitMode === 'sets'
+                      ? 'Sets of 6'
+                      : changeQtyModalItem.unit}
+                  </span>
+                </div>
+                {changeQtyModalItem.category === 'UPVC Profile' && qtyUnitMode === 'sets' && (
+                  <div className="mt-1 font-mono text-[11px] text-emerald-700 font-semibold">
+                    = {newQtyValue * 6} bars of 6m ({formatNumberIN(newQtyValue * 36)} meters)
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Reason for Adjustment / Audit Reference
+                </label>
+                <input
+                  type="text"
+                  value={changeQtyReason}
+                  onChange={(e) => setChangeQtyReason(e.target.value)}
+                  placeholder="e.g. Physical warehouse audit count, scrap write-off..."
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setChangeQtyModalItem(null)}
+                className="py-1.5 px-3 rounded border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNewQuantity}
+                className="py-1.5 px-4 rounded bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer text-xs shadow-xs"
+              >
+                Update Stock Quantity
               </button>
             </div>
           </div>

@@ -7,9 +7,11 @@ import {
   IndianRupee,
   Edit3,
   Check,
+  Scale,
 } from 'lucide-react';
 import { useERP } from '../context/ERPContext';
 import { formatNumberIN, formatBundlesText } from '../services/rbac';
+import { ProfileWeightListCalculator } from '../components/common/ProfileWeightListCalculator';
 
 export const ProductsPage: React.FC = () => {
   const {
@@ -22,7 +24,7 @@ export const ProductsPage: React.FC = () => {
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<
-    'profiles' | 'accessories' | 'pricing' | 'bom'
+    'profiles' | 'accessories' | 'pricing' | 'bom' | 'weight_list'
   >('profiles');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -73,12 +75,13 @@ export const ProductsPage: React.FC = () => {
         </div>
 
         {/* Module Sub-Tabs */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+        <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
           {[
             { key: 'profiles', label: 'UPVC Profiles' },
             { key: 'accessories', label: 'Accessories' },
             { key: 'pricing', label: 'Pricing Matrix' },
             { key: 'bom', label: 'Bill of Materials' },
+            { key: 'weight_list', label: '⚖️ Weight List & Estimator' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -95,7 +98,14 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {activeTab === 'weight_list' ? (
+        <ProfileWeightListCalculator
+          title="UPVC Profile Weight List & Cutting Specification Tool"
+          subtitle="Dual-mode: Upload a fabricator cutting/weight list CSV or enter profile weights manually to automatically calculate meters, sets of 6 pieces bundles, raw material requirements, and stock availability."
+        />
+      ) : (
+        <>
+          {/* Filters */}
       <div className="bg-white p-3 rounded-lg border border-slate-200 flex flex-wrap items-center gap-2.5 text-xs">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -414,6 +424,8 @@ export const ProductsPage: React.FC = () => {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

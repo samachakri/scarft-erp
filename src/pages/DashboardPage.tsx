@@ -17,6 +17,7 @@ import {
 import { useERP } from '../context/ERPContext';
 import { formatINR, formatINRCompact, formatNumberIN } from '../services/rbac';
 import { ModuleKey } from '../types/erp';
+import { ProfileWeightListCalculator } from '../components/common/ProfileWeightListCalculator';
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -450,6 +451,12 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Profile Weight List & Cutting Requirement Calculator (Dual Entry: Manual + CSV / Text Upload) */}
+      <ProfileWeightListCalculator
+        title="Fabricator Profile Weight List & Requirement Calculator"
+        subtitle="Quickly evaluate fabricator project inquiries: manually input profile weights/meters or upload a weight list CSV to instantly calculate meterage, 6m bar sets, stock readiness, and convert to Quotation."
+      />
 
       {/* Bottom Row: Recent Leads, Recent Quotations, Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

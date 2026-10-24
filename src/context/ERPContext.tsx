@@ -129,6 +129,12 @@ interface ERPContextType {
   generatePurchaseRequirementFromMRP: (profileCode: string, quantityMeters: number) => PurchaseRequirement;
   stockInRawMaterial: (materialId: string, quantity: number, notes: string) => void;
   adjustRawMaterialStock: (materialId: string, newQuantity: number, reason: string) => void;
+  updateInventoryItemQuantity: (
+    itemId: string,
+    newQuantity: number,
+    reason: string,
+    unitMode?: 'meters' | 'sets'
+  ) => void;
   updateProductPrice: (productId: string, sellingPrice: number, dealerPrice: number) => void;
   addProfileBundleStock: (
     productId: string,
@@ -1008,6 +1014,80 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       `${newQuantity} ${target.unit}`
     );
     showToast(`Adjusted ${target.code} stock to ${newQuantity} ${target.unit}`, 'info');
+  };
+
+  const updateInventoryItemQuantity = (
+    itemId: string,
+    newQuantity: number,
+    reason: string,
+    unitMode: 'meters' | 'sets' = 'meters'
+  ) => {
+    // Check if it's a Raw Material
+    const rm = rawMaterials.find((r) => r.id === itemId || r.code === itemId);
+    if (rm) {
+      adjustRawMaterialStock(rm.id, newQuantity, reason);
+      return;
+    }
+
+    // Check if it's a Product (Profile or Accessory)
+    const prod = products.find((p) => p.id === itemId || p.code === itemId);
+    if (prod) {
+      const targetMeters =
+        prod.itemType === 'UPVC Profile' && unitMode === 'sets'
+          ? newQuantity * 36
+          : newQuantity;
+
+      const diff = targetMeters - prod.currentStock;
+      const beforeStr = `${prod.currentStock} ${prod.unit}`;
+      const afterStr = `${targetMeters} ${prod.unit}`;
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === prod.id
+            ? {
+                ...p,
+                currentStock: targetMeters,
+                status:
+                  targetMeters <= 0
+                    ? 'Discontinued'
+                    : targetMeters < p.minimumStock
+                    ? 'Low Stock'
+                    : 'Active',
+              }
+            : p
+        )
+      );
+
+      const sm: StockMovement = {
+        id: `SM-${Date.now().toString().slice(-4)}`,
+        date: 'Today, Just Now',
+        itemCode: prod.code,
+        itemName: prod.name,
+        itemCategory: prod.itemType,
+        movementType: 'Adjustment',
+        quantity: diff,
+        unit: prod.unit,
+        referenceId: `ADJ-${Date.now().toString().slice(-4)}`,
+        performedBy: currentEmployee.name,
+        notes: reason || 'Inventory count adjustment',
+      };
+      setStockMovements((prev) => [sm, ...prev]);
+
+      logActivity(
+        'Inventory',
+        'Stock Quantity Adjusted',
+        prod.code,
+        `Adjusted stock for ${prod.code}: ${reason || 'Physical inventory count'}`,
+        beforeStr,
+        afterStr
+      );
+      showToast(
+        `Updated ${prod.code} stock to ${targetMeters} ${prod.unit}${
+          prod.itemType === 'UPVC Profile' ? ` (~${Math.floor(targetMeters / 36)} Sets)` : ''
+        }`,
+        'success'
+      );
+    }
   };
 
   const updateProductPrice = (productId: string, sellingPrice: number, dealerPrice: number) => {
@@ -2040,6 +2120,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         generatePurchaseRequirementFromMRP,
         stockInRawMaterial,
         adjustRawMaterialStock,
+        updateInventoryItemQuantity,
         updateProductPrice,
         addProfileBundleStock,
         createQuotation,
