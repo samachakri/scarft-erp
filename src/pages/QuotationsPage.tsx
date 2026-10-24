@@ -59,6 +59,7 @@ export const QuotationsPage: React.FC = () => {
     {
       id: string;
       productId: string;
+      description?: string;
       quantity: number;
       rate: number;
       discountPercent: number;
@@ -67,6 +68,7 @@ export const QuotationsPage: React.FC = () => {
     {
       id: 'LINE-1',
       productId: 'PRD-001',
+      description: 'Frame Profile (Casement 60mm 4-Chamber) (White)',
       quantity: 2000,
       rate: 182,
       discountPercent: 0,
@@ -74,6 +76,7 @@ export const QuotationsPage: React.FC = () => {
     {
       id: 'LINE-2',
       productId: 'PRD-009',
+      description: 'Double Glazing Bead 24mm DGU Acoustic (White)',
       quantity: 1200,
       rate: 49,
       discountPercent: 0,
@@ -102,7 +105,10 @@ export const QuotationsPage: React.FC = () => {
       id: line.id,
       productId: prod.id,
       profileCode: prod.code,
-      description: `${prod.name} (${prod.color})`,
+      description:
+        line.description !== undefined && line.description !== ''
+          ? line.description
+          : `${prod.name} (${prod.color})`,
       quantity: line.quantity,
       unit: prod.unit,
       rate: line.rate,
@@ -306,19 +312,21 @@ export const QuotationsPage: React.FC = () => {
               STEP 2: ADD UPVC PROFILES & ACCESSORIES
             </span>
             <button
-              onClick={() =>
+              onClick={() => {
+                const defaultProd = products[1] || products[0];
                 setBuilderItems((prev) => [
                   ...prev,
                   {
                     id: `LINE-${Date.now()}`,
-                    productId: products[1]?.id || 'PRD-002',
+                    productId: defaultProd.id,
+                    description: `${defaultProd.name} (${defaultProd.color})`,
                     quantity: 1200,
-                    rate: products[1]?.sellingPrice || 194,
+                    rate: defaultProd.sellingPrice || 194,
                     discountPercent: 0,
                   },
-                ])
-              }
-              className="flex items-center gap-1 px-3 py-1.5 rounded bg-slate-900 text-white font-semibold cursor-pointer"
+                ]);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-semibold cursor-pointer text-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Item</span>
@@ -326,55 +334,83 @@ export const QuotationsPage: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
-                  <th className="py-2 px-2.5">Profile</th>
-                  <th className="py-2 px-2.5">Description</th>
-                  <th className="py-2 px-2.5 w-28">Quantity</th>
-                  <th className="py-2 px-2">Unit</th>
-                  <th className="py-2 px-2.5 w-28">Rate (₹)</th>
-                  <th className="py-2 px-2.5 w-24">Discount %</th>
-                  <th className="py-2 px-2 text-center">GST</th>
-                  <th className="py-2 px-2.5 text-right">Amount (Incl. GST)</th>
-                  <th className="py-2 px-2 text-center">Action</th>
+                  <th className="py-2.5 px-3">Description</th>
+                  <th className="py-2.5 px-2.5 text-center w-28">Quantity</th>
+                  <th className="py-2.5 px-2 text-center">Unit</th>
+                  <th className="py-2.5 px-2.5 text-center w-28">Rate (₹)</th>
+                  <th className="py-2.5 px-2.5 text-center w-24">Discount %</th>
+                  <th className="py-2.5 px-2 text-center">GST</th>
+                  <th className="py-2.5 px-3 text-right">Amount (Incl. GST)</th>
+                  <th className="py-2.5 px-2 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {builderItems.map((line, index) => {
                   const computed = computedBuilderLines[index];
                   return (
-                    <tr key={line.id}>
-                      <td className="py-2.5 px-2.5">
-                        <select
-                          value={line.productId}
-                          onChange={(e) => {
-                            const newProd = products.find((p) => p.id === e.target.value);
-                            setBuilderItems((prev) =>
-                              prev.map((item) =>
-                                item.id === line.id
-                                  ? {
-                                      ...item,
-                                      productId: e.target.value,
-                                      rate: newProd?.sellingPrice || item.rate,
-                                    }
-                                  : item
-                              )
-                            );
-                          }}
-                          className="px-2 py-1.5 border border-slate-300 rounded bg-white font-mono font-semibold"
-                        >
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.code}
-                            </option>
-                          ))}
-                        </select>
+                    <tr key={line.id} className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 min-w-[280px]">
+                        <div className="space-y-1">
+                          {/* Manual editable Description input */}
+                          <input
+                            type="text"
+                            value={
+                              line.description !== undefined
+                                ? line.description
+                                : computed.description
+                            }
+                            onChange={(e) => {
+                              const newDesc = e.target.value;
+                              setBuilderItems((prev) =>
+                                prev.map((item) =>
+                                  item.id === line.id ? { ...item, description: newDesc } : item
+                                )
+                              );
+                            }}
+                            placeholder="Write or edit description manually..."
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded font-medium text-slate-900 bg-white focus:outline-none focus:border-red-500 text-xs shadow-2xs"
+                          />
+
+                          {/* Select accordingly the product that the dashboard had */}
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">
+                              Product:
+                            </span>
+                            <select
+                              value={line.productId}
+                              onChange={(e) => {
+                                const newProd = products.find((p) => p.id === e.target.value);
+                                if (newProd) {
+                                  setBuilderItems((prev) =>
+                                    prev.map((item) =>
+                                      item.id === line.id
+                                        ? {
+                                            ...item,
+                                            productId: e.target.value,
+                                            description: `${newProd.name} (${newProd.color})`,
+                                            rate: newProd.sellingPrice || item.rate,
+                                          }
+                                        : item
+                                    )
+                                  );
+                                }
+                              }}
+                              className="w-full px-2 py-0.5 border border-slate-200 rounded bg-slate-50 text-[11px] font-mono text-slate-700 hover:bg-white focus:outline-none focus:border-red-500"
+                            >
+                              {products.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.code} — {p.name} ({p.color}) • ₹{p.sellingPrice}/{p.unit}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-2.5 px-2.5 text-slate-700 font-medium">
-                        {computed.description}
-                      </td>
-                      <td className="py-2.5 px-2.5">
+
+                      <td className="py-2.5 px-2.5 text-center">
                         <input
                           type="number"
                           min={1}
@@ -388,11 +424,15 @@ export const QuotationsPage: React.FC = () => {
                               )
                             )
                           }
-                          className="w-24 px-2 py-1 border border-slate-300 rounded font-mono font-bold"
+                          className="w-24 px-2 py-1.5 border border-slate-300 rounded font-mono font-bold text-center bg-white shadow-2xs"
                         />
                       </td>
-                      <td className="py-2.5 px-2 text-slate-500">{computed.unit}</td>
-                      <td className="py-2.5 px-2.5">
+
+                      <td className="py-2.5 px-2 text-center font-mono text-slate-600">
+                        {computed.unit}
+                      </td>
+
+                      <td className="py-2.5 px-2.5 text-center">
                         <input
                           type="number"
                           min={1}
@@ -406,10 +446,11 @@ export const QuotationsPage: React.FC = () => {
                               )
                             )
                           }
-                          className="w-24 px-2 py-1 border border-slate-300 rounded font-mono font-bold"
+                          className="w-24 px-2 py-1.5 border border-slate-300 rounded font-mono font-bold text-center bg-white shadow-2xs"
                         />
                       </td>
-                      <td className="py-2.5 px-2.5">
+
+                      <td className="py-2.5 px-2.5 text-center">
                         <input
                           type="number"
                           min={0}
@@ -427,22 +468,27 @@ export const QuotationsPage: React.FC = () => {
                               )
                             )
                           }
-                          className="w-20 px-2 py-1 border border-slate-300 rounded font-mono"
+                          className="w-20 px-2 py-1.5 border border-slate-300 rounded font-mono text-center bg-white shadow-2xs"
                         />
                       </td>
+
                       <td className="py-2.5 px-2 text-center font-mono text-slate-600">
                         {computed.gstPercent}%
                       </td>
-                      <td className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-900">
+
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 text-sm">
                         {formatINR(computed.totalAmount)}
                       </td>
+
                       <td className="py-2.5 px-2 text-center">
                         <button
+                          type="button"
                           disabled={builderItems.length <= 1}
                           onClick={() =>
                             setBuilderItems((prev) => prev.filter((i) => i.id !== line.id))
                           }
-                          className="p-1 text-slate-400 hover:text-red-600 disabled:opacity-30"
+                          className="p-1.5 text-slate-400 hover:text-red-600 disabled:opacity-30 cursor-pointer rounded hover:bg-red-50"
+                          title="Remove item"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
