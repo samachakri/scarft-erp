@@ -191,7 +191,10 @@ export type ProductCategory =
   | 'Mullion / Transom'
   | 'Glazing Bead'
   | 'Louver & Misc'
-  | 'Accessory';
+  | 'Accessory'
+  | 'Custom Section'
+  | 'Custom Extrusion'
+  | 'Custom UPVC Profile';
 
 export interface Product {
   id: string;
@@ -199,7 +202,7 @@ export interface Product {
   name: string;
   category: ProductCategory;
   itemType: 'UPVC Profile' | 'Accessory';
-  color: 'White' | 'Anthracite Grey' | 'Walnut Wood' | 'Golden Oak' | 'Black' | 'Metallic Silver';
+  color: 'White' | 'Anthracite Grey' | 'Walnut Wood' | 'Golden Oak' | 'Black' | 'Metallic Silver' | 'Dark Bronze' | string;
   lengthMeters: number; // e.g. 6 meters for profiles, 0 for accessories
   weightPerMeterKg: number; // e.g. 1.85 kg/m
   unit: 'meters' | 'pieces' | 'kg';

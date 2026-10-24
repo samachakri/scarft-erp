@@ -5,6 +5,7 @@ import {
   Fabricator,
   Dealer,
   Product,
+  ProductCategory,
   RawMaterial,
   BillOfMaterials,
   StockMovement,
@@ -128,6 +129,16 @@ interface ERPContextType {
   reserveMaterialForMRP: (profileCode: string, quantityMeters: number) => void;
   generatePurchaseRequirementFromMRP: (profileCode: string, quantityMeters: number) => PurchaseRequirement;
   stockInRawMaterial: (materialId: string, quantity: number, notes: string) => void;
+  createRawMaterial: (data: {
+    name: string;
+    code?: string;
+    category?: RawMaterial['category'];
+    availableQuantity?: number;
+    minimumLevel?: number;
+    unit?: 'kg' | 'meters' | 'pieces';
+    averageCostPerUnit?: number;
+    supplier?: string;
+  }) => RawMaterial;
   adjustRawMaterialStock: (materialId: string, newQuantity: number, reason: string) => void;
   updateInventoryItemQuantity: (
     itemId: string,
@@ -160,10 +171,15 @@ interface ERPContextType {
 
   createProductionOrder: (data: {
     orderId?: string;
-    productId: string;
+    productId?: string;
+    customProfileName?: string;
+    customProfileCode?: string;
+    customColor?: string;
+    customCategory?: string;
+    customWeightPerMeter?: number;
     requiredQuantity: number;
-    dueDate: string;
-    extruderLine: string;
+    dueDate?: string;
+    extruderLine?: string;
   }) => ProductionOrder;
   updateProductionOrder: (
     poId: string,
@@ -180,6 +196,10 @@ interface ERPContextType {
     operatorName: string;
     linkedOrderId?: string;
     notes?: string;
+    customDieName?: string;
+    customProfileCode?: string;
+    customWeightPerMeter?: number;
+    customExtruderLine?: string;
   }) => ExtrusionSession;
   updateExtrusionSessionStatus: (
     sessionId: string,
@@ -258,7 +278,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dealers, setDealers] = useState<Dealer[]>(INITIAL_DEALERS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(INITIAL_RAW_MATERIALS);
-  const [boms] = useState<BillOfMaterials[]>(INITIAL_BOMS);
+  const [boms, setBoms] = useState<BillOfMaterials[]>(INITIAL_BOMS);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(INITIAL_STOCK_MOVEMENTS);
   const [purchaseRequirements, setPurchaseRequirements] = useState<PurchaseRequirement[]>(
     INITIAL_PURCHASE_REQUIREMENTS
@@ -966,6 +986,49 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Stocked in +${quantity} ${target.unit} for ${target.code}`, 'success');
   };
 
+  const createRawMaterial = (data: {
+    name: string;
+    code?: string;
+    category?: RawMaterial['category'];
+    availableQuantity?: number;
+    minimumLevel?: number;
+    unit?: 'kg' | 'meters' | 'pieces';
+    averageCostPerUnit?: number;
+    supplier?: string;
+  }): RawMaterial => {
+    const cleanName = data.name.trim();
+    const cleanCode =
+      data.code?.trim() ||
+      `RM-${String(rawMaterials.length + 1).padStart(3, '0')}`;
+    const qty = data.availableQuantity ?? 500;
+    const minLvl = data.minimumLevel ?? 200;
+
+    const newMaterial: RawMaterial = {
+      id: `mat-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      category: data.category || 'Stabilizer & Additive',
+      availableQuantity: qty,
+      reservedQuantity: 0,
+      minimumLevel: minLvl,
+      unit: data.unit || 'kg',
+      averageCostPerUnit: data.averageCostPerUnit || 140,
+      supplier: data.supplier || 'Standard UPVC Chemical Supplier',
+      lastPurchaseDate: 'Today, Just Now',
+      status: qty <= 0 ? 'Out of Stock' : qty <= minLvl ? 'Low' : 'Healthy',
+    };
+
+    setRawMaterials((prev) => [...prev, newMaterial]);
+    logActivity(
+      'Inventory',
+      'Raw Material Registered',
+      cleanCode,
+      `Added new chemical / raw material: ${cleanName} (${cleanCode})`
+    );
+    showToast(`Registered new chemical / raw material: ${cleanName}`, 'success');
+    return newMaterial;
+  };
+
   const adjustRawMaterialStock = (materialId: string, newQuantity: number, reason: string) => {
     const target = rawMaterials.find((r) => r.id === materialId || r.code === materialId);
     if (!target) return;
@@ -1535,20 +1598,106 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 6. PRODUCTION ORDERS
   const createProductionOrder = (data: {
     orderId?: string;
-    productId: string;
+    productId?: string;
+    customProfileName?: string;
+    customProfileCode?: string;
+    customColor?: string;
+    customCategory?: string;
+    customWeightPerMeter?: number;
     requiredQuantity: number;
-    dueDate: string;
-    extruderLine: string;
+    dueDate?: string;
+    extruderLine?: string;
   }): ProductionOrder => {
-    const prod = products.find((p) => p.id === data.productId) || products[0];
+    let prod = products.find((p) => p.id === data.productId);
     const linkedOrder = salesOrders.find((o) => o.id === data.orderId);
+
+    // If manual custom profile name was provided by user
+    if (data.customProfileName && data.customProfileName.trim()) {
+      const cleanName = data.customProfileName.trim();
+      const cleanCode =
+        data.customProfileCode?.trim() ||
+        `SCF-CUST-${Math.floor(100 + Math.random() * 900)}`;
+      const weight =
+        data.customWeightPerMeter && data.customWeightPerMeter > 0
+          ? data.customWeightPerMeter
+          : 1.45;
+      const color = data.customColor || 'White';
+      const category: ProductCategory = (data.customCategory as ProductCategory) || 'Custom UPVC Profile';
+
+      const customProduct: Product = {
+        id: `PRD-CUST-${Date.now().toString().slice(-4)}`,
+        code: cleanCode,
+        name: cleanName,
+        category,
+        itemType: 'UPVC Profile',
+        color,
+        lengthMeters: 6,
+        weightPerMeterKg: weight,
+        sellingPrice: Math.round(weight * 168),
+        dealerPrice: Math.round(weight * 150),
+        unit: 'meters',
+        minimumStock: 300,
+        currentStock: 0,
+        reservedStock: 0,
+        gstPercent: 18,
+        status: 'Active',
+      };
+
+      setProducts((prev) => [customProduct, ...prev]);
+
+      // Add corresponding BOM for this new custom profile so compound calculates
+      const customBom: BillOfMaterials = {
+        id: `BOM-CUST-${Date.now().toString().slice(-4)}`,
+        productId: customProduct.id,
+        profileCode: cleanCode,
+        profileName: cleanName,
+        weightPerMeterKg: weight,
+        extrusionLineType: data.extruderLine || 'Extruder Line 02 (KraussMaffei KM-65)',
+        standardOutputMetersPerHour: 180,
+        components: [
+          {
+            materialId: 'MAT-001',
+            materialCode: 'RM-001',
+            materialName: 'PVC Resin K-67 (SG-5)',
+            quantityPerMeter: Number((weight * 0.78).toFixed(3)),
+            unit: 'kg',
+          },
+          {
+            materialId: 'MAT-002',
+            materialCode: 'RM-002',
+            materialName: 'Calcium Carbonate Treated (CaCO3)',
+            quantityPerMeter: Number((weight * 0.15).toFixed(3)),
+            unit: 'kg',
+          },
+          {
+            materialId: 'MAT-003',
+            materialCode: 'RM-003',
+            materialName: 'Titanium Dioxide Rutile (TiO2)',
+            quantityPerMeter: Number((weight * 0.022).toFixed(3)),
+            unit: 'kg',
+          },
+          {
+            materialId: 'MAT-004',
+            materialCode: 'RM-004',
+            materialName: 'CPE 135A Impact Modifier',
+            quantityPerMeter: Number((weight * 0.018).toFixed(3)),
+            unit: 'kg',
+          },
+        ],
+      };
+      setBoms((prev) => [customBom, ...prev]);
+      prod = customProduct;
+    } else if (!prod) {
+      prod = products[0];
+    }
+
     const mrp = calculateMRP(prod.code, data.requiredQuantity);
     const newPoId = `PO-2026-00${128 + productionOrders.length - 5}`;
 
     const newPo: ProductionOrder = {
       id: newPoId,
       orderId: data.orderId,
-      fabricatorName: linkedOrder?.fabricatorName || 'Stock Replenishment',
+      fabricatorName: linkedOrder?.fabricatorName || 'Stock Replenishment / Custom Profile',
       productId: prod.id,
       profileCode: prod.code,
       profileName: prod.name,
@@ -1562,14 +1711,14 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       materialStatus:
         mrp.shortageMaterialsCount > 0 ? 'Shortage - Purchase Req' : 'Available & Reserved',
       productionStatus: mrp.shortageMaterialsCount > 0 ? 'Material Pending' : 'Planned',
-      extruderLine: data.extruderLine || 'Extruder Line 02',
+      extruderLine: data.extruderLine || 'Extruder Line 02 (KraussMaffei KM-65)',
       dueDate: data.dueDate || '12 Oct 2026',
-      createdAt: '03 Oct 2026',
+      createdAt: 'Today, Just Now',
       timeline: [
         {
           id: `POT-${Date.now()}`,
           timestamp: 'Just Now',
-          title: `Production Order Created (${data.requiredQuantity}m ${prod.code})`,
+          title: `Production Order Scheduled (${data.requiredQuantity}m of ${prod.name})`,
           actor: currentEmployee.name,
           type: 'info',
         },
@@ -1597,9 +1746,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'Production',
       'Production Order Created',
       newPoId,
-      `Created ${newPoId} for ${data.requiredQuantity}m of ${prod.code}`
+      `Created ${newPoId} for ${data.requiredQuantity}m of ${prod.name} (${prod.code})`
     );
-    showToast(`Production Order ${newPoId} scheduled!`, 'success');
+    showToast(`Production Order ${newPoId} (${prod.name}) scheduled!`, 'success');
     return newPo;
   };
 
@@ -1727,9 +1876,40 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     operatorName: string;
     linkedOrderId?: string;
     notes?: string;
+    customDieName?: string;
+    customProfileCode?: string;
+    customWeightPerMeter?: number;
+    customExtruderLine?: string;
   }): ExtrusionSession => {
-    const die = dies.find((d) => d.dieNumber === data.dieNumber) || dies[0];
-    const prod = products.find((p) => p.code === die.profileCode) || products[0];
+    let die = dies.find((d) => d.dieNumber === data.dieNumber);
+    if (data.customDieName && data.customDieName.trim()) {
+      const cleanDieNumber =
+        data.dieNumber.trim() || `DIE-CUST-${Math.floor(100 + Math.random() * 900)}`;
+      const cleanDieName = data.customDieName.trim();
+      const customDie: ExtrusionDie = {
+        id: `die-${Date.now()}`,
+        dieNumber: cleanDieNumber,
+        dieName: cleanDieName,
+        profileCode: data.customProfileCode || cleanDieNumber.replace('DIE-', 'SCF-'),
+        extruderLine: data.customExtruderLine || 'Extruder Line 02 (KraussMaffei KM-65)',
+        standardSpeedMpm: 2.2,
+        weightPerMeterKg: data.customWeightPerMeter || 1.6,
+        heatingZonesTemp: '185°C - 192°C - 198°C - 205°C',
+        vacuumPressureBar: -0.65,
+        totalMetersRun: 0,
+        ratedLifeMeters: 250000,
+        maintenanceStatus: 'Ready',
+      };
+      setDies((prev) => [customDie, ...prev]);
+      die = customDie;
+    } else if (!die) {
+      die = dies[0];
+    }
+
+    const prod = products.find((p) => p.code === die.profileCode) || {
+      name: die.dieName,
+      code: die.profileCode,
+    };
     const targetMeters = data.targetBundles * 36;
     const targetPieces = data.targetBundles * 6;
 
@@ -2119,6 +2299,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reserveMaterialForMRP,
         generatePurchaseRequirementFromMRP,
         stockInRawMaterial,
+        createRawMaterial,
         adjustRawMaterialStock,
         updateInventoryItemQuantity,
         updateProductPrice,
