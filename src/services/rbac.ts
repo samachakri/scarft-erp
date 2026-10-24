@@ -149,3 +149,29 @@ export function formatINRCompact(amount: number): string {
 export function formatNumberIN(num: number): string {
   return new Intl.NumberFormat('en-IN').format(num);
 }
+
+// In Indian UPVC profile manufacturing, standard extruded bars are 6 meters long
+// and packed in Sets / Bundles of 6 pieces (1 Set = 6 pcs = 36 meters).
+export function metersToBundles(meters: number, barLengthM = 6, pcsPerBundle = 6): {
+  bundles: number;
+  pieces: number;
+  meterPerBundle: number;
+} {
+  const meterPerBundle = barLengthM * pcsPerBundle; // 36 meters
+  const bundles = Math.floor(meters / meterPerBundle);
+  const remainingMeters = meters % meterPerBundle;
+  const pieces = Math.ceil(remainingMeters / barLengthM);
+  return { bundles, pieces, meterPerBundle };
+}
+
+export function bundlesToMeters(bundles: number, pieces = 0, barLengthM = 6): number {
+  return bundles * (6 * barLengthM) + pieces * barLengthM;
+}
+
+export function formatBundlesText(meters: number): string {
+  if (!meters || meters <= 0) return '0 Sets';
+  const { bundles, pieces } = metersToBundles(meters);
+  if (bundles === 0) return `${pieces} pcs (${pieces * 6}m)`;
+  if (pieces === 0) return `${bundles} Sets (${bundles * 6} pcs)`;
+  return `${bundles} Sets + ${pieces} pcs`;
+}

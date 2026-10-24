@@ -84,10 +84,9 @@ export const FabricatorsPage: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(filteredFabricators.length / pageSize));
   const paginatedFabricators = filteredFabricators.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedFab =
-    fabricators.find((f) => f.id === selectedRecordId) ||
-    paginatedFabricators[0] ||
-    fabricators[0];
+  const selectedFab = selectedRecordId
+    ? fabricators.find((f) => f.id === selectedRecordId) || null
+    : null;
 
   // Related records for selected Fabricator
   const fabQuotations = quotations.filter((q) => q.fabricatorId === selectedFab?.id);
@@ -239,10 +238,10 @@ export const FabricatorsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Split View: Fabricator Table (7 cols) + Fabricator 360 Detail Panel (5 cols) */}
+      {/* Split View: Fabricator Table (Full width or 7 cols when selected) + Fabricator 360 Detail Panel (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Table */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedFab ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -364,9 +363,17 @@ export const FabricatorsPage: React.FC = () => {
             {/* Red Banner */}
             <div className="px-4 py-2.5 bg-red-600 text-white flex items-center justify-between text-[11px] font-bold">
               <span>VIEWING FABRICATOR • {selectedFab.id} (SELECTED)</span>
-              <span className="px-2 py-0.5 rounded bg-white/20 text-white">
-                {selectedFab.tier} Workshop
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-white/20 text-white">
+                  {selectedFab.tier} Workshop
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 text-red-800 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">

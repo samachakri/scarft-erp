@@ -12,7 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useERP } from '../context/ERPContext';
-import { formatINR, formatINRCompact, formatNumberIN } from '../services/rbac';
+import { formatINR, formatINRCompact, formatNumberIN, formatBundlesText } from '../services/rbac';
 
 export const InventoryAndRawMaterialsPage: React.FC = () => {
   const {
@@ -24,6 +24,7 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
     stockMovements,
     stockInRawMaterial,
     adjustRawMaterialStock,
+    addProfileBundleStock,
     navigateTo,
   } = useERP();
 
@@ -47,9 +48,18 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
   const [qtyInput, setQtyInput] = useState(500);
   const [notesInput, setNotesInput] = useState('Reliance Hazira Lot #R-8821');
 
-  const selectedRM =
-    rawMaterials.find((r) => r.id === selectedRecordId || r.code === selectedRecordId) ||
-    rawMaterials[0];
+  // Manual Profile Bundle Receiving (Sets of 6 pieces)
+  const [showBundleModal, setShowBundleModal] = useState(false);
+  const [bundleProductId, setBundleProductId] = useState(
+    products.find((p) => p.itemType === 'UPVC Profile')?.id || 'PRD-001'
+  );
+  const [bundleSetsCount, setBundleSetsCount] = useState(30);
+  const [bundleRack, setBundleRack] = useState('Warehouse Rack B-04');
+  const [bundleNotes, setBundleNotes] = useState('Received from Line 04 extrusion batch');
+
+  const selectedRM = selectedRecordId
+    ? rawMaterials.find((r) => r.id === selectedRecordId || r.code === selectedRecordId) || null
+    : null;
 
   // Inventory Overview KPIs
   const rawMaterialValue = rawMaterials.reduce(
@@ -140,33 +150,43 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
-          {[
-            { key: 'overview', label: 'Overview' },
-            { key: 'raw_materials', label: 'Raw Materials' },
-            { key: 'profiles', label: 'UPVC Profiles' },
-            { key: 'accessories', label: 'Accessories' },
-            { key: 'movements', label: 'Stock Movements' },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as typeof tab)}
-              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
-                tab === t.key
-                  ? 'bg-white text-red-600 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => navigateTo('material_requirements', null)}
-            className="px-3 py-1.5 rounded-md text-slate-700 hover:text-red-600 flex items-center gap-1 cursor-pointer"
+            onClick={() => setShowBundleModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer shadow-xs"
           >
-            <Calculator className="w-3.5 h-3.5 text-red-600" />
-            <span>Material Requirements</span>
+            <Boxes className="w-3.5 h-3.5" />
+            <span>+ Add Profile Stock (Sets of 6 pcs)</span>
           </button>
+
+          <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+            {[
+              { key: 'overview', label: 'Overview' },
+              { key: 'raw_materials', label: 'Raw Materials' },
+              { key: 'profiles', label: 'UPVC Profiles' },
+              { key: 'accessories', label: 'Accessories' },
+              { key: 'movements', label: 'Stock Movements' },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key as typeof tab)}
+                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                  tab === t.key
+                    ? 'bg-white text-red-600 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+            <button
+              onClick={() => navigateTo('material_requirements', null)}
+              className="px-3 py-1.5 rounded-md text-slate-700 hover:text-red-600 flex items-center gap-1 cursor-pointer"
+            >
+              <Calculator className="w-3.5 h-3.5 text-red-600" />
+              <span>Material Requirements</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -318,7 +338,7 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
       {/* TAB CONTENT 2: RAW MATERIALS SPLIT VIEW (Section 13) */}
       {tab === 'raw_materials' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className={`${selectedRM ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -396,7 +416,15 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
             <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
               <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
                 <span>RAW MATERIAL DETAIL • {selectedRM.code}</span>
-                <span>{selectedRM.category}</span>
+                <div className="flex items-center gap-2">
+                  <span>{selectedRM.category}</span>
+                  <button
+                    onClick={() => setSelectedRecordId(null)}
+                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
               </div>
 
               <div className="p-4 space-y-4 text-xs">
@@ -636,6 +664,104 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      {/* Modal: Quick Add Profile Stock in Sets of 6 pieces */}
+      {showBundleModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2">
+                <Boxes className="w-5 h-5 text-red-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Receive Profile Stock (Sets of 6 pcs)
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowBundleModal(false)}
+                className="p-1 rounded text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Select UPVC Profile</label>
+                <select
+                  value={bundleProductId}
+                  onChange={(e) => setBundleProductId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded font-mono font-semibold bg-white"
+                >
+                  {products
+                    .filter((p) => p.itemType === 'UPVC Profile')
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} • {p.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Quantity to Add (Sets of 6 Pieces)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={bundleSetsCount}
+                    onChange={(e) => setBundleSetsCount(Math.max(1, Number(e.target.value)))}
+                    className="w-24 px-3 py-1.5 border border-slate-300 rounded font-mono font-bold text-slate-900"
+                  />
+                  <span className="font-semibold text-slate-700">Sets</span>
+                </div>
+                <div className="mt-1 font-mono text-[11px] text-emerald-700 font-semibold">
+                  = {bundleSetsCount * 6} bars of 6m ({formatNumberIN(bundleSetsCount * 36)} meters)
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Warehouse Rack Location</label>
+                <input
+                  type="text"
+                  value={bundleRack}
+                  onChange={(e) => setBundleRack(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Notes / Batch Reference</label>
+                <input
+                  type="text"
+                  value={bundleNotes}
+                  onChange={(e) => setBundleNotes(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowBundleModal(false)}
+                className="py-1.5 px-3 rounded border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  addProfileBundleStock(bundleProductId, bundleSetsCount, bundleRack, bundleNotes);
+                  setShowBundleModal(false);
+                }}
+                className="py-1.5 px-3.5 rounded bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer text-xs shadow-xs"
+              >
+                Confirm & Stock In {bundleSetsCount} Sets
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -21,6 +21,10 @@ import {
   WebhookEventType,
   LeadStatus,
   PaymentMethod,
+  ExtrusionDie,
+  ExtrusionSession,
+  SessionShift,
+  SessionStatus,
 } from '../types/erp';
 import {
   INITIAL_EMPLOYEES,
@@ -38,6 +42,8 @@ import {
   INITIAL_DISPATCHES,
   INITIAL_PAYMENTS,
   INITIAL_ACTIVITY_LOGS,
+  INITIAL_DIES,
+  INITIAL_EXTRUSION_SESSIONS,
 } from '../data/mockData';
 import { ROLE_ALLOWED_MODULES } from '../services/rbac';
 
@@ -91,6 +97,8 @@ interface ERPContextType {
   quotations: Quotation[];
   salesOrders: SalesOrder[];
   productionOrders: ProductionOrder[];
+  dies: ExtrusionDie[];
+  extrusionSessions: ExtrusionSession[];
   dispatches: DispatchRecord[];
   payments: PaymentTransaction[];
   activityLogs: ActivityLogEntry[];
@@ -122,6 +130,12 @@ interface ERPContextType {
   stockInRawMaterial: (materialId: string, quantity: number, notes: string) => void;
   adjustRawMaterialStock: (materialId: string, newQuantity: number, reason: string) => void;
   updateProductPrice: (productId: string, sellingPrice: number, dealerPrice: number) => void;
+  addProfileBundleStock: (
+    productId: string,
+    bundlesCount: number,
+    rackLocation?: string,
+    notes?: string
+  ) => void;
 
   createQuotation: (quotationData: Omit<Quotation, 'id' | 'createdAt' | 'timeline'>) => Quotation;
   submitQuotationForApproval: (quotationId: string) => void;
@@ -150,6 +164,22 @@ interface ERPContextType {
     action: 'start' | 'pause' | 'update_qty' | 'complete',
     producedDelta?: number,
     rejectedDelta?: number
+  ) => void;
+
+  createExtrusionSession: (data: {
+    dieNumber: string;
+    shift: SessionShift;
+    date: string;
+    targetBundles: number;
+    operatorName: string;
+    linkedOrderId?: string;
+    notes?: string;
+  }) => ExtrusionSession;
+  updateExtrusionSessionStatus: (
+    sessionId: string,
+    status: SessionStatus,
+    producedDeltaMeters?: number,
+    scrapDeltaMeters?: number
   ) => void;
 
   createDispatch: (data: {
@@ -231,6 +261,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>(INITIAL_SALES_ORDERS);
   const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>(
     INITIAL_PRODUCTION_ORDERS
+  );
+  const [dies, setDies] = useState<ExtrusionDie[]>(INITIAL_DIES);
+  const [extrusionSessions, setExtrusionSessions] = useState<ExtrusionSession[]>(
+    INITIAL_EXTRUSION_SESSIONS
   );
   const [dispatches, setDispatches] = useState<DispatchRecord[]>(INITIAL_DISPATCHES);
   const [payments, setPayments] = useState<PaymentTransaction[]>(INITIAL_PAYMENTS);
@@ -373,7 +407,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: data.phone || '+91 98100 00000',
       email: data.email || 'contact@fabricator.in',
       location: data.location || 'Jaipur, Rajasthan',
-      source: data.source || 'Manual',
+      source: data.source || 'Organic',
       customerType: data.customerType || 'Fabricator',
       assignedEmployeeId: assignedEmp.id,
       assignedEmployeeName: assignedEmp.name,
@@ -389,7 +423,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `TL-${Date.now()}`,
           timestamp: 'Just Now',
-          title: `Lead Created (${data.source || 'Manual'})`,
+          title: `Lead Created (${data.source || 'Organic'})`,
           actor: currentEmployee.name,
           type: 'info',
         },
@@ -1605,6 +1639,174 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`${poId}: ${actionLabel}`, 'success');
   };
 
+  const createExtrusionSession = (data: {
+    dieNumber: string;
+    shift: SessionShift;
+    date: string;
+    targetBundles: number;
+    operatorName: string;
+    linkedOrderId?: string;
+    notes?: string;
+  }): ExtrusionSession => {
+    const die = dies.find((d) => d.dieNumber === data.dieNumber) || dies[0];
+    const prod = products.find((p) => p.code === die.profileCode) || products[0];
+    const targetMeters = data.targetBundles * 36;
+    const targetPieces = data.targetBundles * 6;
+
+    // Standard UPVC compound calculation based on weight per meter
+    const totalCompoundKg = targetMeters * (die.weightPerMeterKg || 2.5);
+    const resinReq = Math.round(totalCompoundKg * 0.78);
+    const caco3Req = Math.round(totalCompoundKg * 0.15);
+    const tio2Req = Math.round(totalCompoundKg * 0.022);
+    const addReq = Math.round(totalCompoundKg * 0.018);
+
+    // Silo stock check
+    const resinStock = rawMaterials.find((r) => r.code === 'RM-001')?.availableQuantity || 1200;
+    const caco3Stock = rawMaterials.find((r) => r.code === 'RM-002')?.availableQuantity || 4800;
+    const tio2Stock = rawMaterials.find((r) => r.code === 'RM-003')?.availableQuantity || 32;
+    const addStock = rawMaterials.find((r) => r.code === 'RM-004')?.availableQuantity || 420;
+
+    const resinSessions = resinReq > 0 ? Math.floor(resinStock / resinReq) : 0;
+    const caco3Sessions = caco3Req > 0 ? Math.floor(caco3Stock / caco3Req) : 0;
+    const tio2Sessions = tio2Req > 0 ? Math.floor(tio2Stock / tio2Req) : 0;
+    const addSessions = addReq > 0 ? Math.floor(addStock / addReq) : 0;
+
+    const maxSessionsPossible = Math.min(resinSessions, caco3Sessions, tio2Sessions, addSessions);
+    const remainingSessions = Math.max(0, maxSessionsPossible - 1);
+
+    const newId = `SES-2026-00${43 + extrusionSessions.length}`;
+    const newSession: ExtrusionSession = {
+      id: newId,
+      sessionCode: `SES-${die.dieNumber.replace('DIE-', '')}-${String(extrusionSessions.length + 1).padStart(2, '0')}`,
+      dieNumber: die.dieNumber,
+      profileCode: die.profileCode,
+      profileName: prod.name,
+      extruderLine: die.extruderLine,
+      shift: data.shift,
+      date: data.date,
+      targetMeters,
+      targetBundles: data.targetBundles,
+      targetPieces,
+      status: 'Scheduled',
+      resinRequiredKg: resinReq,
+      calciumCarbonateRequiredKg: caco3Req,
+      tio2RequiredKg: tio2Req,
+      additivesRequiredKg: addReq,
+      maxSessionsPossibleWithStock: maxSessionsPossible,
+      remainingSessionsSupported: remainingSessions,
+      producedMeters: 0,
+      producedBundles: 0,
+      scrapMeters: 0,
+      operatorName: data.operatorName || currentEmployee.name,
+      linkedOrderId: data.linkedOrderId,
+      notes: data.notes,
+    };
+
+    setExtrusionSessions((prev) => [newSession, ...prev]);
+    logActivity(
+      'Production',
+      'Extrusion Session Scheduled',
+      newId,
+      `Scheduled session for ${data.targetBundles} Sets (${targetMeters}m) of ${die.profileCode} using die ${die.dieNumber} on ${die.extruderLine}`
+    );
+    showToast(`Extrusion Session ${newSession.sessionCode} scheduled successfully!`, 'success');
+    return newSession;
+  };
+
+  const updateExtrusionSessionStatus = (
+    sessionId: string,
+    status: SessionStatus,
+    producedDeltaMeters = 0,
+    scrapDeltaMeters = 0
+  ) => {
+    const ses = extrusionSessions.find((s) => s.id === sessionId);
+    if (!ses) return;
+
+    const newProducedMeters = Math.min(ses.targetMeters, ses.producedMeters + producedDeltaMeters);
+    const newProducedBundles = Math.floor(newProducedMeters / 36);
+    const newScrapMeters = ses.scrapMeters + scrapDeltaMeters;
+
+    setExtrusionSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              status,
+              producedMeters: newProducedMeters,
+              producedBundles: newProducedBundles,
+              scrapMeters: newScrapMeters,
+            }
+          : s
+      )
+    );
+
+    if (status === 'Completed') {
+      const addedMeters = ses.targetMeters - ses.scrapMeters;
+      const addedBundles = Math.floor(addedMeters / 36);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.code === ses.profileCode
+            ? { ...p, currentStock: p.currentStock + addedMeters }
+            : p
+        )
+      );
+      const movement: StockMovement = {
+        id: `SM-${Date.now().toString().slice(-4)}`,
+        date: 'Today, Just Now',
+        itemCode: ses.profileCode,
+        itemName: ses.profileName,
+        itemCategory: 'UPVC Profile',
+        movementType: 'Production In',
+        quantity: addedMeters,
+        unit: 'meters',
+        referenceId: ses.sessionCode,
+        performedBy: currentEmployee.name,
+        notes: `Extruded from Line (${ses.targetBundles} Sets)`,
+      };
+      setStockMovements((prev) => [movement, ...prev]);
+      showToast(`Session ${ses.sessionCode} completed! +${addedBundles} Sets added to inventory.`, 'success');
+    } else {
+      showToast(`Session ${ses.sessionCode} updated to ${status}.`, 'info');
+    }
+  };
+
+  const addProfileBundleStock = (
+    productId: string,
+    bundlesCount: number,
+    rackLocation = 'Warehouse Rack A-01',
+    notes = 'Manual Bundle Stacking (Sets of 6)'
+  ) => {
+    const prod = products.find((p) => p.id === productId || p.code === productId);
+    if (!prod) return;
+    const addedMeters = bundlesCount * 36;
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === prod.id ? { ...p, currentStock: p.currentStock + addedMeters } : p
+      )
+    );
+    const movement: StockMovement = {
+      id: `SM-${Date.now().toString().slice(-4)}`,
+      date: 'Today, Just Now',
+      itemCode: prod.code,
+      itemName: prod.name,
+      itemCategory: 'UPVC Profile',
+      movementType: 'Production In',
+      quantity: addedMeters,
+      unit: 'meters',
+      referenceId: `SET6-${bundlesCount}BUNDLES`,
+      performedBy: currentEmployee.name,
+      notes: `${notes} (${bundlesCount} Sets)`,
+    };
+    setStockMovements((prev) => [movement, ...prev]);
+    logActivity(
+      'Inventory',
+      'Profile Stock Added (Sets of 6)',
+      prod.code,
+      `Manually received ${bundlesCount} Sets (${addedMeters}m) of ${prod.code}. ${notes}`
+    );
+    showToast(`Added ${bundlesCount} Sets of 6 (${addedMeters} meters) to ${prod.code}!`, 'success');
+  };
+
   // 7. DISPATCH
   const createDispatch = (data: {
     orderId: string;
@@ -1816,6 +2018,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         quotations,
         salesOrders,
         productionOrders,
+        dies,
+        extrusionSessions,
         dispatches,
         payments,
         activityLogs,
@@ -1837,6 +2041,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stockInRawMaterial,
         adjustRawMaterialStock,
         updateProductPrice,
+        addProfileBundleStock,
         createQuotation,
         submitQuotationForApproval,
         approveQuotation,
@@ -1847,6 +2052,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         advanceOrderWorkflow,
         createProductionOrder,
         updateProductionOrder,
+        createExtrusionSession,
+        updateExtrusionSessionStatus,
         createDispatch,
         updateDispatchStatus,
         recordPayment,

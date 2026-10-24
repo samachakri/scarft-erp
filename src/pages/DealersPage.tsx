@@ -44,8 +44,9 @@ export const DealersPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const selectedDealer =
-    dealers.find((d) => d.id === selectedRecordId) || filteredDealers[0] || dealers[0];
+  const selectedDealer = selectedRecordId
+    ? dealers.find((d) => d.id === selectedRecordId) || null
+    : null;
 
   const associatedFabricators = fabricators.filter((f) =>
     selectedDealer?.fabricatorIds.includes(f.id)
@@ -139,9 +140,9 @@ export const DealersPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Split View: Dealer Table (7 cols) + Dealer Relationship Detail (5 cols) */}
+      {/* Split View: Dealer Table (Full width or 7 cols when selected) + Dealer Relationship Detail (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedDealer ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -217,9 +218,17 @@ export const DealersPage: React.FC = () => {
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
               <span>DEALER PROFILE • {selectedDealer.id}</span>
-              <span className="px-2 py-0.5 rounded bg-red-600 text-white">
-                Est. {selectedDealer.establishedYear}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-red-600 text-white">
+                  Est. {selectedDealer.establishedYear}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">

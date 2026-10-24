@@ -70,21 +70,24 @@ export const LeadsPage: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
   const paginatedLeads = filteredLeads.slice((page - 1) * pageSize, page * pageSize);
 
-  const selectedLead =
-    leads.find((l) => l.id === selectedRecordId) || paginatedLeads[0] || leads[0];
+  const selectedLead = selectedRecordId
+    ? leads.find((l) => l.id === selectedRecordId) || null
+    : null;
 
   const getSourceBadge = (source: string) => {
     switch (source) {
       case 'WhatsApp':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Website':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'Facebook':
+      case 'Meta Ads':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'Instagram':
-        return 'bg-pink-50 text-pink-700 border-pink-200';
-      case 'Phone':
+      case 'Google Ads':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'Organic':
+        return 'bg-teal-50 text-teal-700 border-teal-200';
+      case 'Referral / Phone':
         return 'bg-amber-50 text-amber-800 border-amber-200';
+      case 'Walk-in / Expo':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
       default:
         return 'bg-slate-100 text-slate-700 border-slate-200';
     }
@@ -202,11 +205,11 @@ export const LeadsPage: React.FC = () => {
         >
           <option value="ALL">Source: All Sources</option>
           <option value="WhatsApp">WhatsApp</option>
-          <option value="Website">Website</option>
-          <option value="Facebook">Facebook</option>
-          <option value="Instagram">Instagram</option>
-          <option value="Phone">Phone</option>
-          <option value="Manual">Manual</option>
+          <option value="Meta Ads">Meta Ads</option>
+          <option value="Google Ads">Google Ads</option>
+          <option value="Organic">Organic</option>
+          <option value="Referral / Phone">Referral / Phone</option>
+          <option value="Walk-in / Expo">Walk-in / Expo</option>
         </select>
 
         <select
@@ -269,10 +272,10 @@ export const LeadsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Main Split View: Table (7 cols) + Lead Detail Drawer (5 cols) */}
+      {/* Main Split View: Table (Full width or 7 cols when selected) + Lead Detail Drawer (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Leads Table */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedLead ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -378,13 +381,21 @@ export const LeadsPage: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-red-600" />
                 <span>VIEWING LEAD • {selectedLead.id}</span>
               </div>
-              <span
-                className={`px-2 py-0.5 rounded border text-[10px] font-bold ${getStatusBadge(
-                  selectedLead.status
-                )}`}
-              >
-                {selectedLead.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-0.5 rounded border text-[10px] font-bold ${getStatusBadge(
+                    selectedLead.status
+                  )}`}
+                >
+                  {selectedLead.status}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-red-300 text-red-800 text-xs font-semibold cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">

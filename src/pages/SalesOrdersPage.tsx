@@ -13,7 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useERP } from '../context/ERPContext';
-import { formatINR, formatNumberIN } from '../services/rbac';
+import { formatINR, formatNumberIN, formatBundlesText } from '../services/rbac';
 import { OrderWorkflowStage } from '../types/erp';
 
 const WORKFLOW_STAGES: OrderWorkflowStage[] = [
@@ -53,10 +53,9 @@ export const SalesOrdersPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const selectedOrder =
-    salesOrders.find((o) => o.id === selectedRecordId) ||
-    filteredOrders[0] ||
-    salesOrders[0];
+  const selectedOrder = selectedRecordId
+    ? salesOrders.find((o) => o.id === selectedRecordId) || null
+    : null;
 
   const currentStageIdx = selectedOrder
     ? WORKFLOW_STAGES.indexOf(selectedOrder.workflowStage)
@@ -184,9 +183,9 @@ export const SalesOrdersPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Split View: Orders Table (7 cols) + Order 360 Detail Panel (5 cols) */}
+      {/* Split View: Orders Table (Full width or 7 cols when selected) + Order 360 Detail Panel (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedOrder ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -266,9 +265,17 @@ export const SalesOrdersPage: React.FC = () => {
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
               <span>ORDER #{selectedOrder.id}</span>
-              <span className="px-2 py-0.5 rounded bg-red-600 text-white">
-                {selectedOrder.workflowStage}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-red-600 text-white">
+                  {selectedOrder.workflowStage}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">
@@ -317,7 +324,7 @@ export const SalesOrdersPage: React.FC = () => {
                           {item.profileName} ({item.profileCode})
                         </span>
                         <span className="font-mono font-bold text-slate-900">
-                          {formatNumberIN(item.orderedQuantity)} {item.unit}
+                          {formatNumberIN(item.orderedQuantity)} {item.unit} ({formatBundlesText(item.orderedQuantity)})
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">

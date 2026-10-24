@@ -14,7 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { useERP } from '../context/ERPContext';
-import { formatINR, formatNumberIN, getPermissionsForRole } from '../services/rbac';
+import { formatINR, formatNumberIN, getPermissionsForRole, formatBundlesText } from '../services/rbac';
 import { QuotationItem, QuotationStatus } from '../types/erp';
 
 export const QuotationsPage: React.FC = () => {
@@ -167,10 +167,9 @@ export const QuotationsPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const selectedQuotation =
-    quotations.find((q) => q.id === selectedRecordId) ||
-    filteredQuotations[0] ||
-    quotations[0];
+  const selectedQuotation = selectedRecordId
+    ? quotations.find((q) => q.id === selectedRecordId) || null
+    : null;
 
   const getStatusStyle = (st: QuotationStatus) => {
     switch (st) {
@@ -688,9 +687,9 @@ export const QuotationsPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Split View: Quotations Table (7 cols) + Quotation Approval & Detail Panel (5 cols) */}
+      {/* Split View: Quotations Table (Full width or 7 cols when selected) + Quotation Approval & Detail Panel (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedQuotation ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -759,13 +758,22 @@ export const QuotationsPage: React.FC = () => {
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
               <span>QUOTATION • {selectedQuotation.id}</span>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusStyle(
-                  selectedQuotation.status
-                )}`}
-              >
-                {selectedQuotation.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusStyle(
+                    selectedQuotation.status
+                  )}`}
+                >
+                  {selectedQuotation.status}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Close side panel"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">
@@ -937,7 +945,7 @@ export const QuotationsPage: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-[11px] font-mono text-slate-500">
-                          {formatNumberIN(item.quantity)} {item.unit} × ₹{item.rate} (Disc:{' '}
+                          {formatNumberIN(item.quantity)} {item.unit} ({formatBundlesText(item.quantity)}) × ₹{item.rate} (Disc:{' '}
                           {item.discountPercent}%, GST: {item.gstPercent}%)
                         </div>
                       </div>

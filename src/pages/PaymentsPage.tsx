@@ -51,10 +51,9 @@ export const PaymentsPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const selectedPayment =
-    payments.find((p) => p.id === selectedRecordId) ||
-    filteredPayments[0] ||
-    payments[0];
+  const selectedPayment = selectedRecordId
+    ? payments.find((p) => p.id === selectedRecordId) || null
+    : null;
 
   const getBadge = (st: PaymentRecordStatus) => {
     switch (st) {
@@ -171,9 +170,9 @@ export const PaymentsPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Split View: Table (7 cols) + Payment Detail Panel (5 cols) */}
+      {/* Split View: Table (Full width or 7 cols when selected) + Payment Detail Panel (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedPayment ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -242,13 +241,21 @@ export const PaymentsPage: React.FC = () => {
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
               <span>PAYMENT LEDGER • {selectedPayment.id}</span>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getBadge(
-                  selectedPayment.status
-                )}`}
-              >
-                {selectedPayment.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getBadge(
+                    selectedPayment.status
+                  )}`}
+                >
+                  {selectedPayment.status}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">

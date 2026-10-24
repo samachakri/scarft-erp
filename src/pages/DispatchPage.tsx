@@ -49,10 +49,9 @@ export const DispatchPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const selectedDispatch =
-    dispatches.find((d) => d.id === selectedRecordId) ||
-    filteredDispatches[0] ||
-    dispatches[0];
+  const selectedDispatch = selectedRecordId
+    ? dispatches.find((d) => d.id === selectedRecordId) || null
+    : null;
 
   const getBadge = (st: DispatchStatus) => {
     switch (st) {
@@ -138,9 +137,9 @@ export const DispatchPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Split View: Table (7 cols) + Dispatch Detail Panel (5 cols) */}
+      {/* Split View: Table (Full width or 7 cols when selected) + Dispatch Detail Panel (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className={`${selectedDispatch ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-200`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -211,13 +210,21 @@ export const DispatchPage: React.FC = () => {
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between text-[11px] font-bold">
               <span>DISPATCH CONSIGNMENT • {selectedDispatch.id}</span>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getBadge(
-                  selectedDispatch.status
-                )}`}
-              >
-                {selectedDispatch.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getBadge(
+                    selectedDispatch.status
+                  )}`}
+                >
+                  {selectedDispatch.status}
+                </span>
+                <button
+                  onClick={() => setSelectedRecordId(null)}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 text-xs">

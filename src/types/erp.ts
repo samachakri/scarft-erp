@@ -66,7 +66,13 @@ export interface Employee {
   plantUnit: string;
 }
 
-export type LeadSource = 'WhatsApp' | 'Website' | 'Facebook' | 'Instagram' | 'Phone' | 'Manual';
+export type LeadSource =
+  | 'WhatsApp'
+  | 'Meta Ads'
+  | 'Google Ads'
+  | 'Organic'
+  | 'Referral / Phone'
+  | 'Walk-in / Expo';
 export type LeadCustomerType = 'Fabricator' | 'Dealer' | 'Other';
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Quotation' | 'Converted' | 'Lost';
 
@@ -244,7 +250,7 @@ export interface BillOfMaterials {
   standardOutputMetersPerHour: number;
 }
 
-export type StockMovementType = 'Purchase' | 'Production Consumption' | 'Adjustment' | 'Return' | 'Transfer';
+export type StockMovementType = 'Purchase' | 'Production Consumption' | 'Production In' | 'Adjustment' | 'Return' | 'Transfer';
 
 export interface StockMovement {
   id: string;
@@ -413,6 +419,60 @@ export interface ProductionOrder {
   dueDate: string;
   createdAt: string;
   timeline: TimelineItem[];
+}
+
+export interface ExtrusionDie {
+  id: string;
+  dieNumber: string; // e.g. DIE-S112-30T
+  dieName: string;
+  profileCode: string;
+  extruderLine: string;
+  standardSpeedMpm: number;
+  weightPerMeterKg: number;
+  heatingZonesTemp: string;
+  vacuumPressureBar: number;
+  totalMetersRun: number;
+  ratedLifeMeters: number;
+  maintenanceStatus: 'Ready' | 'In Tooling' | 'Service Required';
+}
+
+export type SessionShift =
+  | 'Morning Shift (06:00 - 14:00)'
+  | 'Evening Shift (14:00 - 22:00)'
+  | 'Night Shift (22:00 - 06:00)';
+
+export type SessionStatus =
+  | 'Scheduled'
+  | 'Heating Up'
+  | 'Running'
+  | 'Completed'
+  | 'Paused';
+
+export interface ExtrusionSession {
+  id: string; // e.g. SES-2026-0042
+  sessionCode: string;
+  dieNumber: string;
+  profileCode: string;
+  profileName: string;
+  extruderLine: string;
+  shift: SessionShift;
+  date: string;
+  targetMeters: number;
+  targetBundles: number; // Sets of 6 pcs (36m per set)
+  targetPieces: number;
+  status: SessionStatus;
+  resinRequiredKg: number;
+  calciumCarbonateRequiredKg: number;
+  tio2RequiredKg: number;
+  additivesRequiredKg: number;
+  maxSessionsPossibleWithStock: number;
+  remainingSessionsSupported: number;
+  producedMeters: number;
+  producedBundles: number;
+  scrapMeters: number;
+  operatorName: string;
+  linkedOrderId?: string;
+  notes?: string;
 }
 
 export type DispatchStatus =

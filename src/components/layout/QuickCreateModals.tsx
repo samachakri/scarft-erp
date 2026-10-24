@@ -147,14 +147,14 @@ export const QuickCreateModals: React.FC = () => {
                   <select
                     value={leadSource}
                     onChange={(e) => setLeadSource(e.target.value as LeadSource)}
-                    className="w-full px-2.5 py-2 border border-slate-300 rounded-md bg-white"
+                    className="w-full px-2.5 py-2 border border-slate-300 rounded-md bg-white font-medium"
                   >
                     <option value="WhatsApp">WhatsApp</option>
-                    <option value="Website">Website</option>
-                    <option value="Facebook">Facebook</option>
-                    <option value="Instagram">Instagram</option>
-                    <option value="Phone">Phone</option>
-                    <option value="Manual">Manual</option>
+                    <option value="Meta Ads">Meta Ads</option>
+                    <option value="Google Ads">Google Ads</option>
+                    <option value="Organic">Organic</option>
+                    <option value="Referral / Phone">Referral / Phone</option>
+                    <option value="Walk-in / Expo">Walk-in / Expo</option>
                   </select>
                 </div>
                 <div>
