@@ -148,10 +148,23 @@ interface ERPContextType {
   ) => void;
   updateProductPrice: (productId: string, sellingPrice: number, dealerPrice: number) => void;
   addProfileBundleStock: (
-    productId: string,
-    bundlesCount: number,
-    rackLocation?: string,
-    notes?: string
+    param1:
+      | string
+      | {
+          productId?: string;
+          customProfileName?: string;
+          customProfileCode?: string;
+          customColor?: string;
+          customCategory?: string;
+          bundlesCount: number;
+          piecesPerSet?: number;
+          barLengthMeters?: number;
+          rackLocation?: string;
+          notes?: string;
+        },
+    param2?: number,
+    param3?: string,
+    param4?: string
   ) => void;
 
   createQuotation: (quotationData: Omit<Quotation, 'id' | 'createdAt' | 'timeline'>) => Quotation;
@@ -200,6 +213,13 @@ interface ERPContextType {
     customProfileCode?: string;
     customWeightPerMeter?: number;
     customExtruderLine?: string;
+    piecesPerSet?: number;
+    customFormulaMaterials?: {
+      name: string;
+      quantityKg: number;
+      costPerKg?: number;
+      percentage?: number;
+    }[];
   }) => ExtrusionSession;
   updateExtrusionSessionStatus: (
     sessionId: string,
@@ -1880,6 +1900,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     customProfileCode?: string;
     customWeightPerMeter?: number;
     customExtruderLine?: string;
+    piecesPerSet?: number;
+    customFormulaMaterials?: {
+      name: string;
+      quantityKg: number;
+      costPerKg?: number;
+      percentage?: number;
+    }[];
   }): ExtrusionSession => {
     let die = dies.find((d) => d.dieNumber === data.dieNumber);
     if (data.customDieName && data.customDieName.trim()) {
@@ -1910,15 +1937,40 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: die.dieName,
       code: die.profileCode,
     };
-    const targetMeters = data.targetBundles * 36;
-    const targetPieces = data.targetBundles * 6;
+    const piecesPerSet = data.piecesPerSet && data.piecesPerSet > 0 ? data.piecesPerSet : 6;
+    const targetPieces = data.targetBundles * piecesPerSet;
+    const targetMeters = targetPieces * 6.0;
 
     // Standard UPVC compound calculation based on weight per meter
     const totalCompoundKg = targetMeters * (die.weightPerMeterKg || 2.5);
-    const resinReq = Math.round(totalCompoundKg * 0.78);
-    const caco3Req = Math.round(totalCompoundKg * 0.15);
-    const tio2Req = Math.round(totalCompoundKg * 0.022);
-    const addReq = Math.round(totalCompoundKg * 0.018);
+    let resinReq = Math.round(totalCompoundKg * 0.78);
+    let caco3Req = Math.round(totalCompoundKg * 0.15);
+    let tio2Req = Math.round(totalCompoundKg * 0.022);
+    let addReq = Math.round(totalCompoundKg * 0.018);
+
+    if (data.customFormulaMaterials && data.customFormulaMaterials.length > 0) {
+      const resinMat = data.customFormulaMaterials.find((m) =>
+        m.name.toLowerCase().includes('resin')
+      );
+      const caco3Mat = data.customFormulaMaterials.find(
+        (m) => m.name.toLowerCase().includes('caco3') || m.name.toLowerCase().includes('calcium')
+      );
+      const tio2Mat = data.customFormulaMaterials.find(
+        (m) => m.name.toLowerCase().includes('tio2') || m.name.toLowerCase().includes('titanium')
+      );
+      const addMat = data.customFormulaMaterials.find(
+        (m) =>
+          m.name.toLowerCase().includes('stabilizer') ||
+          m.name.toLowerCase().includes('cpe') ||
+          m.name.toLowerCase().includes('wax') ||
+          m.name.toLowerCase().includes('additive')
+      );
+
+      if (resinMat) resinReq = Math.round(resinMat.quantityKg);
+      if (caco3Mat) caco3Req = Math.round(caco3Mat.quantityKg);
+      if (tio2Mat) tio2Req = Math.round(tio2Mat.quantityKg);
+      if (addMat) addReq = Math.round(addMat.quantityKg);
+    }
 
     // Silo stock check
     const resinStock = rawMaterials.find((r) => r.code === 'RM-001')?.availableQuantity || 1200;
@@ -1926,10 +1978,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tio2Stock = rawMaterials.find((r) => r.code === 'RM-003')?.availableQuantity || 32;
     const addStock = rawMaterials.find((r) => r.code === 'RM-004')?.availableQuantity || 420;
 
-    const resinSessions = resinReq > 0 ? Math.floor(resinStock / resinReq) : 0;
-    const caco3Sessions = caco3Req > 0 ? Math.floor(caco3Stock / caco3Req) : 0;
-    const tio2Sessions = tio2Req > 0 ? Math.floor(tio2Stock / tio2Req) : 0;
-    const addSessions = addReq > 0 ? Math.floor(addStock / addReq) : 0;
+    const resinSessions = resinReq > 0 ? Math.floor(resinStock / resinReq) : 99;
+    const caco3Sessions = caco3Req > 0 ? Math.floor(caco3Stock / caco3Req) : 99;
+    const tio2Sessions = tio2Req > 0 ? Math.floor(tio2Stock / tio2Req) : 99;
+    const addSessions = addReq > 0 ? Math.floor(addStock / addReq) : 99;
 
     const maxSessionsPossible = Math.min(resinSessions, caco3Sessions, tio2Sessions, addSessions);
     const remainingSessions = Math.max(0, maxSessionsPossible - 1);
@@ -1947,6 +1999,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetMeters,
       targetBundles: data.targetBundles,
       targetPieces,
+      piecesPerSet,
+      customFormulaMaterials: data.customFormulaMaterials,
       status: 'Scheduled',
       resinRequiredKg: resinReq,
       calciumCarbonateRequiredKg: caco3Req,
@@ -1967,7 +2021,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'Production',
       'Extrusion Session Scheduled',
       newId,
-      `Scheduled session for ${data.targetBundles} Sets (${targetMeters}m) of ${die.profileCode} using die ${die.dieNumber} on ${die.extruderLine}`
+      `Scheduled session for ${data.targetBundles} Sets (${piecesPerSet} pcs/set, ${targetMeters}m) of ${die.profileCode} using die ${die.dieNumber} on ${die.extruderLine}`
     );
     showToast(`Extrusion Session ${newSession.sessionCode} scheduled successfully!`, 'success');
     return newSession;
@@ -1982,8 +2036,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const ses = extrusionSessions.find((s) => s.id === sessionId);
     if (!ses) return;
 
-    const newProducedMeters = Math.min(ses.targetMeters, ses.producedMeters + producedDeltaMeters);
-    const newProducedBundles = Math.floor(newProducedMeters / 36);
+    const piecesPerSet = ses.piecesPerSet || 6;
+    const metersPerSet = piecesPerSet * 6.0;
+    const newProducedMeters = Math.min(
+      ses.targetMeters,
+      ses.producedMeters + (producedDeltaMeters || (status === 'Completed' ? ses.targetMeters - ses.producedMeters : 0))
+    );
+    const newProducedBundles = Math.floor(newProducedMeters / metersPerSet);
     const newScrapMeters = ses.scrapMeters + scrapDeltaMeters;
 
     setExtrusionSessions((prev) =>
@@ -2001,15 +2060,74 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (status === 'Completed') {
-      const addedMeters = ses.targetMeters - ses.scrapMeters;
-      const addedBundles = Math.floor(addedMeters / 36);
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.code === ses.profileCode
-            ? { ...p, currentStock: p.currentStock + addedMeters }
-            : p
-        )
+      const addedMeters = Math.max(0, newProducedMeters - newScrapMeters);
+      const addedBundles = Math.floor(addedMeters / metersPerSet);
+
+      // Check if product exists in inventory catalog
+      const existingProduct = products.find(
+        (p) => p.code === ses.profileCode || p.name.toLowerCase() === ses.profileName.toLowerCase()
       );
+
+      if (existingProduct) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === existingProduct.id
+              ? {
+                  ...p,
+                  currentStock: p.currentStock + addedMeters,
+                  piecesPerSet: p.piecesPerSet || piecesPerSet,
+                  bundles: Math.floor((p.currentStock + addedMeters) / metersPerSet),
+                  pieces: Math.round((p.currentStock + addedMeters) / 6),
+                }
+              : p
+          )
+        );
+      } else {
+        // Auto-create product for custom profile in Inventory
+        const newProduct: Product = {
+          id: `PRD-${Date.now().toString().slice(-4)}`,
+          code: ses.profileCode,
+          name: ses.profileName,
+          category: ses.profileName.toLowerCase().includes('casement')
+            ? 'Casement Profile'
+            : 'Sliding Profile',
+          itemType: 'UPVC Profile',
+          color: 'White',
+          lengthMeters: 6.0,
+          weightPerMeterKg: 1.6,
+          sellingPrice: 195,
+          dealerPrice: 175,
+          unit: 'meters',
+          piecesPerSet: piecesPerSet,
+          rackLocation: 'Rack B-02',
+          currentStock: addedMeters,
+          reservedStock: 0,
+          minimumStock: 120,
+          gstPercent: 18,
+          status: 'Active',
+        };
+        setProducts((prev) => [newProduct, ...prev]);
+      }
+
+      // Deduct raw materials consumed in extrusion compound
+      setRawMaterials((prev) =>
+        prev.map((rm) => {
+          if (rm.code === 'RM-001') {
+            return { ...rm, availableQuantity: Math.max(0, rm.availableQuantity - ses.resinRequiredKg) };
+          }
+          if (rm.code === 'RM-002') {
+            return { ...rm, availableQuantity: Math.max(0, rm.availableQuantity - ses.calciumCarbonateRequiredKg) };
+          }
+          if (rm.code === 'RM-003') {
+            return { ...rm, availableQuantity: Math.max(0, rm.availableQuantity - ses.tio2RequiredKg) };
+          }
+          if (rm.code === 'RM-004') {
+            return { ...rm, availableQuantity: Math.max(0, rm.availableQuantity - ses.additivesRequiredKg) };
+          }
+          return rm;
+        })
+      );
+
       const movement: StockMovement = {
         id: `SM-${Date.now().toString().slice(-4)}`,
         date: 'Today, Just Now',
@@ -2021,29 +2139,113 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unit: 'meters',
         referenceId: ses.sessionCode,
         performedBy: currentEmployee.name,
-        notes: `Extruded from Line (${ses.targetBundles} Sets)`,
+        notes: `Extruded from Line (${ses.targetBundles} Sets of ${piecesPerSet} pcs)`,
       };
       setStockMovements((prev) => [movement, ...prev]);
-      showToast(`Session ${ses.sessionCode} completed! +${addedBundles} Sets added to inventory.`, 'success');
+      showToast(
+        `Session ${ses.sessionCode} completed! +${addedBundles} Sets (${addedMeters}m) added to inventory rack.`,
+        'success'
+      );
     } else {
       showToast(`Session ${ses.sessionCode} updated to ${status}.`, 'info');
     }
   };
 
   const addProfileBundleStock = (
-    productId: string,
-    bundlesCount: number,
-    rackLocation = 'Warehouse Rack A-01',
-    notes = 'Manual Bundle Stacking (Sets of 6)'
+    param1:
+      | string
+      | {
+          productId?: string;
+          customProfileName?: string;
+          customProfileCode?: string;
+          customColor?: string;
+          customCategory?: string;
+          bundlesCount: number;
+          piecesPerSet?: number;
+          barLengthMeters?: number;
+          rackLocation?: string;
+          notes?: string;
+        },
+    param2?: number,
+    param3?: string,
+    param4?: string
   ) => {
-    const prod = products.find((p) => p.id === productId || p.code === productId);
-    if (!prod) return;
-    const addedMeters = bundlesCount * 36;
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === prod.id ? { ...p, currentStock: p.currentStock + addedMeters } : p
-      )
+    const isObj = typeof param1 === 'object';
+    const productId = isObj ? param1.productId : param1;
+    const customName = isObj ? param1.customProfileName : undefined;
+    const customCode = isObj ? param1.customProfileCode : undefined;
+    const customColor = isObj ? param1.customColor : undefined;
+    const customCat = isObj ? param1.customCategory : undefined;
+    const bundlesCount = isObj ? param1.bundlesCount : param2 || 1;
+    const piecesPerSet = isObj ? param1.piecesPerSet || 6 : 6;
+    const barLength = isObj ? param1.barLengthMeters || 6.0 : 6.0;
+    const rackLocation = isObj ? param1.rackLocation || 'Rack A-01' : param3 || 'Rack A-01';
+    const notes = isObj ? param1.notes || 'Manual Profile Inward' : param4 || 'Manual Bundle Stacking';
+
+    let prod = products.find(
+      (p) => (productId && p.id === productId) || (productId && p.code === productId)
     );
+
+    const totalBars = bundlesCount * piecesPerSet;
+    const addedMeters = totalBars * barLength;
+
+    if (!prod && customName && customName.trim()) {
+      const cleanName = customName.trim();
+      const cleanCode =
+        customCode?.trim() ||
+        `SCF-${cleanName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}`;
+      const newProduct: Product = {
+        id: `PRD-${Date.now().toString().slice(-4)}`,
+        code: cleanCode,
+        name: cleanName,
+        category: (customCat as ProductCategory) || 'Sliding Profile',
+        itemType: 'UPVC Profile',
+        color: customColor || 'White',
+        lengthMeters: barLength,
+        weightPerMeterKg: 1.45,
+        sellingPrice: 185,
+        dealerPrice: 165,
+        unit: 'meters',
+        minimumStock: 400,
+        currentStock: addedMeters,
+        reservedStock: 0,
+        gstPercent: 18,
+        status: 'Active',
+        piecesPerSet,
+        rackLocation,
+      };
+      setProducts((prev) => [newProduct, ...prev]);
+      prod = newProduct;
+    } else if (prod) {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === prod!.id
+            ? {
+                ...p,
+                currentStock: p.currentStock + addedMeters,
+                piecesPerSet: piecesPerSet || p.piecesPerSet || 6,
+                rackLocation: rackLocation || p.rackLocation || 'Rack A-01',
+                status: 'Active',
+              }
+            : p
+        )
+      );
+    } else {
+      prod = products[0];
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === prod!.id
+            ? {
+                ...p,
+                currentStock: p.currentStock + addedMeters,
+                piecesPerSet,
+                rackLocation,
+              }
+            : p
+        )
+      );
+    }
+
     const movement: StockMovement = {
       id: `SM-${Date.now().toString().slice(-4)}`,
       date: 'Today, Just Now',
@@ -2053,18 +2255,23 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       movementType: 'Production In',
       quantity: addedMeters,
       unit: 'meters',
-      referenceId: `SET6-${bundlesCount}BUNDLES`,
+      referenceId: `${bundlesCount}SETS-${piecesPerSet}PCS`,
       performedBy: currentEmployee.name,
-      notes: `${notes} (${bundlesCount} Sets)`,
+      notes: `${notes} (${bundlesCount} Sets of ${piecesPerSet} pcs = ${totalBars} bars, Rack: ${rackLocation})`,
     };
     setStockMovements((prev) => [movement, ...prev]);
     logActivity(
       'Inventory',
-      'Profile Stock Added (Sets of 6)',
+      'Profile Stock Received',
       prod.code,
-      `Manually received ${bundlesCount} Sets (${addedMeters}m) of ${prod.code}. ${notes}`
+      `Received ${bundlesCount} Sets (${piecesPerSet} pcs/set = ${addedMeters}m) at ${rackLocation}`
     );
-    showToast(`Added ${bundlesCount} Sets of 6 (${addedMeters} meters) to ${prod.code}!`, 'success');
+    showToast(
+      `Added ${bundlesCount} Sets (${piecesPerSet} pcs/set = ${addedMeters.toLocaleString(
+        'en-IN'
+      )}m) to ${prod.name}!`,
+      'success'
+    );
   };
 
   // 7. DISPATCH

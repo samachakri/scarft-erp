@@ -188,13 +188,15 @@ export type ProductCategory =
   | 'Frame Profile'
   | 'Sash Profile'
   | 'Sliding Profile'
+  | 'Casement Profile'
   | 'Mullion / Transom'
   | 'Glazing Bead'
   | 'Louver & Misc'
   | 'Accessory'
   | 'Custom Section'
   | 'Custom Extrusion'
-  | 'Custom UPVC Profile';
+  | 'Custom UPVC Profile'
+  | (string & {});
 
 export interface Product {
   id: string;
@@ -215,6 +217,8 @@ export interface Product {
   status: 'Active' | 'Low Stock' | 'Discontinued';
   bomId?: string;
   dieNumber?: string;
+  piecesPerSet?: number; // e.g. 6 pieces per bundle set
+  rackLocation?: string; // e.g. Rack A-04
 }
 
 export type StockHealthStatus = 'Healthy' | 'Low' | 'Critical' | 'Out of Stock';
@@ -263,7 +267,15 @@ export interface BillOfMaterials {
   standardOutputMetersPerHour: number;
 }
 
-export type StockMovementType = 'Purchase' | 'Production Consumption' | 'Production In' | 'Adjustment' | 'Return' | 'Transfer';
+export type StockMovementType =
+  | 'Purchase'
+  | 'Production Consumption'
+  | 'Production In'
+  | 'Adjustment'
+  | 'Return'
+  | 'Transfer'
+  | 'Stock Inward'
+  | (string & {});
 
 export interface StockMovement {
   id: string;
@@ -486,6 +498,13 @@ export interface ExtrusionSession {
   operatorName: string;
   linkedOrderId?: string;
   notes?: string;
+  piecesPerSet?: number;
+  customFormulaMaterials?: {
+    name: string;
+    quantityKg: number;
+    costPerKg?: number;
+    percentage?: number;
+  }[];
 }
 
 export type DispatchStatus =
