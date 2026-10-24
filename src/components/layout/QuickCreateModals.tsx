@@ -599,35 +599,11 @@ export const QuickCreateModals: React.FC = () => {
               <>
                 {/* Profile Information & Color */}
                 <div className="space-y-3">
-                  {/* Quick Profile Presets & Catalog Selector */}
-                  <div className="space-y-1.5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Select Profile or Choose Preset:
-                      </span>
-                      <select
-                        onChange={(e) => {
-                          const prod = products.find((p) => p.id === e.target.value);
-                          if (prod) {
-                            setPoProfileName(prod.name);
-                            setPoProfileCode(prod.code);
-                            setPoCustomWeight(prod.weightPerMeterKg || 2.65);
-                            setPoCustomColor(prod.color || 'White');
-                            setPoCustomError('');
-                          }
-                        }}
-                        className="px-2 py-1 border border-slate-300 rounded bg-white text-[11px] font-semibold text-slate-800 focus:border-red-500 focus:outline-none"
-                      >
-                        <option value="">📋 Select from Catalog ({products.filter((p) => p.itemType === 'UPVC Profile').length} Profiles)...</option>
-                        {products
-                          .filter((p) => p.itemType === 'UPVC Profile')
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.code} — {p.name} ({p.weightPerMeterKg} kg/m)
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                  {/* Quick Profile Presets */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Quick Profile Presets:
+                    </span>
                     <div className="flex flex-wrap gap-1.5">
                       {profilePresets.map((pre) => (
                         <button
@@ -712,37 +688,18 @@ export const QuickCreateModals: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Extruder Line & Linked Sales Order */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
-                        Extruder Line (Manual Entry) *
-                      </label>
-                      <input
-                        type="text"
-                        value={poLine}
-                        onChange={(e) => setPoLine(e.target.value)}
-                        placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs font-medium placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-800 mb-1">
-                        Linked Sales Order (Optional)
-                      </label>
-                      <select
-                        value={poOrderId}
-                        onChange={(e) => setPoOrderId(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs focus:border-red-500 focus:outline-none"
-                      >
-                        <option value="">Stock Replenishment (No Order)</option>
-                        {salesOrders.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.id} — {o.fabricatorName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* Extruder Line (Manual Entry, No Dropdown) */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Extruder Line (Manual Entry) *
+                    </label>
+                    <input
+                      type="text"
+                      value={poLine}
+                      onChange={(e) => setPoLine(e.target.value)}
+                      placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-800 text-xs font-medium placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
+                    />
                   </div>
 
                   {poCustomError && (
@@ -893,7 +850,6 @@ export const QuickCreateModals: React.FC = () => {
                         `SCF-${poProfileName.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
 
                       const po = createProductionOrder({
-                        orderId: poOrderId || undefined,
                         customProfileName: poProfileName.trim(),
                         customProfileCode: finalCode,
                         customColor: poCustomColor.trim(),
@@ -914,7 +870,6 @@ export const QuickCreateModals: React.FC = () => {
                         targetBundles: Math.max(1, Math.round(calculatedOutputMeters / 36)),
                         piecesPerSet: 6,
                         operatorName: 'Extrusion Floor Supervisor',
-                        linkedOrderId: poOrderId || undefined,
                         notes: `Chemical Mix: ${poChemicals.map((c) => `${c.name}: ${c.quantityKg}kg`).join(', ')}`,
                         customFormulaMaterials: poChemicals.map((c) => ({
                           name: c.name,

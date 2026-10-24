@@ -1260,153 +1260,90 @@ export const ProductionPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Profile & Die Configuration */}
+            {/* Profile & Tooling Specification (100% Manual Written) */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800">Profile & Tooling Specification</span>
-                <div className="flex items-center bg-white p-0.5 rounded border border-slate-200 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setSessionDieMode('manual')}
-                    className={`px-2 py-0.5 rounded font-semibold cursor-pointer ${
-                      sessionDieMode === 'manual' ? 'bg-red-600 text-white' : 'text-slate-600'
-                    }`}
-                  >
-                    Custom / Manual Name
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSessionDieMode('catalog')}
-                    className={`px-2 py-0.5 rounded font-semibold cursor-pointer ${
-                      sessionDieMode === 'catalog' ? 'bg-red-600 text-white' : 'text-slate-600'
-                    }`}
-                  >
-                    Catalog Dies
-                  </button>
+              <span className="font-bold text-slate-800 block">
+                Profile Tooling & Extrusion Parameters (Manual Entry)
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Profile Name (Manual Entry) *
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionCustomDieName}
+                    onChange={(e) => setSessionCustomDieName(e.target.value)}
+                    placeholder="e.g. 3-Track Casement Window Frame (60mm Heavy Series)"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-900 font-medium focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Profile Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionCustomProfileCode}
+                    onChange={(e) => setSessionCustomProfileCode(e.target.value)}
+                    placeholder="e.g. SCF-CS-3T-60"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Die Tooling Number
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionCustomDieNumber}
+                    onChange={(e) => setSessionCustomDieNumber(e.target.value)}
+                    placeholder="e.g. DIE-CS60-3TRK"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Color Name (Manual Entry) *
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionColor}
+                    onChange={(e) => setSessionColor(e.target.value)}
+                    placeholder="e.g. White, Anthracite Grey, Walnut, Golden Oak"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-medium text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Weight (kg/m) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={sessionCustomWeight}
+                    onChange={(e) => setSessionCustomWeight(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Extruder Line (Manual Entry) *
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionCustomLine}
+                    onChange={(e) => setSessionCustomLine(e.target.value)}
+                    placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-800 font-medium text-xs focus:border-red-500 focus:outline-none"
+                  />
                 </div>
               </div>
-
-              {sessionDieMode === 'manual' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Profile Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionCustomDieName}
-                      onChange={(e) => setSessionCustomDieName(e.target.value)}
-                      placeholder="e.g. 3-Track Casement Window Frame (60mm Heavy Series)"
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-900 font-medium focus:border-red-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Profile Code
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionCustomProfileCode}
-                      onChange={(e) => setSessionCustomProfileCode(e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Die Number
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionCustomDieNumber}
-                      onChange={(e) => setSessionCustomDieNumber(e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Color Name (Manual Entry) *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionColor}
-                      onChange={(e) => setSessionColor(e.target.value)}
-                      placeholder="e.g. White, Off-White, Anthracite Grey, Walnut, Golden Oak"
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-medium text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Weight (kg/m)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={sessionCustomWeight}
-                      onChange={(e) => setSessionCustomWeight(Number(e.target.value))}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-mono text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Extruder Line (Manual Entry) *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionCustomLine}
-                      onChange={(e) => setSessionCustomLine(e.target.value)}
-                      placeholder="e.g. Extruder Line 02 (KraussMaffei KM-65) or Line 04"
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-800 font-medium text-xs focus:border-red-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Select Die from Library
-                    </label>
-                    <select
-                      value={sessionDieNumber}
-                      onChange={(e) => setSessionDieNumber(e.target.value)}
-                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-mono font-semibold text-slate-900"
-                    >
-                      {dies.map((d) => (
-                        <option key={d.id} value={d.dieNumber}>
-                          {d.dieNumber} • {d.dieName} ({d.weightPerMeterKg} kg/m)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Color Name (Manual Entry) *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionColor}
-                      onChange={(e) => setSessionColor(e.target.value)}
-                      placeholder="e.g. White, Anthracite Grey, Walnut, Golden Oak"
-                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Extruder Line (Manual Entry) *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionCustomLine}
-                      onChange={(e) => setSessionCustomLine(e.target.value)}
-                      placeholder="e.g. Extruder Line 02 or Line 01"
-                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800 text-xs focus:border-red-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Shift & Floor Operator Assignment */}
