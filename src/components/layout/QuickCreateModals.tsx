@@ -599,11 +599,35 @@ export const QuickCreateModals: React.FC = () => {
               <>
                 {/* Profile Information & Color */}
                 <div className="space-y-3">
-                  {/* Quick Profile Presets */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Quick Profile Presets:
-                    </span>
+                  {/* Quick Profile Presets & Catalog Selector */}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Select Profile or Choose Preset:
+                      </span>
+                      <select
+                        onChange={(e) => {
+                          const prod = products.find((p) => p.id === e.target.value);
+                          if (prod) {
+                            setPoProfileName(prod.name);
+                            setPoProfileCode(prod.code);
+                            setPoCustomWeight(prod.weightPerMeterKg || 2.65);
+                            setPoCustomColor(prod.color || 'White');
+                            setPoCustomError('');
+                          }
+                        }}
+                        className="px-2 py-1 border border-slate-300 rounded bg-white text-[11px] font-semibold text-slate-800 focus:border-red-500 focus:outline-none"
+                      >
+                        <option value="">📋 Select from Catalog ({products.filter((p) => p.itemType === 'UPVC Profile').length} Profiles)...</option>
+                        {products
+                          .filter((p) => p.itemType === 'UPVC Profile')
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.code} — {p.name} ({p.weightPerMeterKg} kg/m)
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       {profilePresets.map((pre) => (
                         <button

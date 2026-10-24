@@ -78,6 +78,7 @@ export const ProductionPage: React.FC = () => {
     'DIE-CS60-3TRK'
   );
   const [sessionCustomProfileCode, setSessionCustomProfileCode] = useState<string>('SCF-CS-3T-60');
+  const [sessionColor, setSessionColor] = useState<string>('White (Standard UV)');
   const [sessionCustomWeight, setSessionCustomWeight] = useState<number>(2.75);
   const [sessionCustomLine, setSessionCustomLine] = useState<string>(
     'Extruder Line 02 (KraussMaffei KM-65)'
@@ -322,6 +323,9 @@ export const ProductionPage: React.FC = () => {
         ? sessionCustomProfileCode.trim() || 'SCF-CS-3T-60'
         : dies.find((d) => d.dieNumber === sessionDieNumber)?.profileCode || 'SCF-PR-01';
 
+    const calculatedMeters = effectiveDieWeight > 0 ? Math.round(totalFormulaKg / effectiveDieWeight) : 1080;
+    const calculatedBundles = Math.max(1, Math.round(calculatedMeters / 36));
+
     createExtrusionSession({
       dieNumber: finalDieNumber,
       customDieName: finalProfileName,
@@ -331,10 +335,10 @@ export const ProductionPage: React.FC = () => {
         sessionDieMode === 'manual' ? sessionCustomLine : undefined,
       shift: sessionShift,
       date: 'Today',
-      targetBundles: sessionBundles,
-      piecesPerSet: sessionPiecesPerSet,
+      targetBundles: calculatedBundles,
+      piecesPerSet: 6,
       operatorName: sessionOperator,
-      notes: sessionNotes,
+      notes: `${sessionNotes} • Color: ${sessionColor}`,
       customFormulaMaterials: compoundMaterials.map((m) => ({
         name: m.materialName,
         quantityKg: m.quantityKg,
@@ -344,7 +348,7 @@ export const ProductionPage: React.FC = () => {
     });
 
     setShowSessionModal(false);
-    showToast(`Extrusion Session scheduled for ${finalProfileName}!`, 'success');
+    showToast(`Extrusion Session scheduled for ${finalProfileName} (${sessionColor})!`, 'success');
   };
 
   // Filtered Production Orders
@@ -1322,6 +1326,19 @@ export const ProductionPage: React.FC = () => {
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Color Name (Manual Entry) *
+                    </label>
+                    <input
+                      type="text"
+                      value={sessionColor}
+                      onChange={(e) => setSessionColor(e.target.value)}
+                      placeholder="e.g. White, Off-White, Anthracite Grey, Walnut, Golden Oak"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white font-medium text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Weight (kg/m)
                     </label>
                     <input
@@ -1350,78 +1367,62 @@ export const ProductionPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Select Die from Library
-                  </label>
-                  <select
-                    value={sessionDieNumber}
-                    onChange={(e) => setSessionDieNumber(e.target.value)}
-                    className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-mono font-semibold text-slate-900"
-                  >
-                    {dies.map((d) => (
-                      <option key={d.id} value={d.dieNumber}>
-                        {d.dieNumber} • {d.dieName} ({d.weightPerMeterKg} kg/m)
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Select Die from Library
+                    </label>
+                    <select
+                      value={sessionDieNumber}
+                      onChange={(e) => setSessionDieNumber(e.target.value)}
+                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-mono font-semibold text-slate-900"
+                    >
+                      {dies.map((d) => (
+                        <option key={d.id} value={d.dieNumber}>
+                          {d.dieNumber} • {d.dieName} ({d.weightPerMeterKg} kg/m)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Color Name (Manual Entry) *
+                    </label>
+                    <input
+                      type="text"
+                      value={sessionColor}
+                      onChange={(e) => setSessionColor(e.target.value)}
+                      placeholder="e.g. White, Anthracite Grey, Walnut, Golden Oak"
+                      className="w-full px-2.5 py-2 border border-slate-300 rounded bg-white font-medium text-slate-800"
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Target Output: Sets & Pieces in each set */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 bg-red-50/50 rounded-lg border border-red-200">
-                <label className="block font-bold text-red-950 mb-1">
-                  Target Sets (Bundles) *
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    value={sessionBundles}
-                    onChange={(e) => setSessionBundles(Math.max(1, Number(e.target.value)))}
-                    className="w-20 px-2 py-1 border border-red-300 rounded bg-white font-mono font-bold text-slate-900"
-                  />
-                  <span className="font-semibold text-slate-700">Sets</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <label className="block font-bold text-slate-800 mb-1">
-                  Pieces in Each Set *
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={24}
-                    value={sessionPiecesPerSet}
-                    onChange={(e) => setSessionPiecesPerSet(Math.max(1, Number(e.target.value)))}
-                    className="w-20 px-2 py-1 border border-slate-300 rounded bg-white font-mono font-bold text-slate-900"
-                  />
-                  <span className="text-slate-600">pcs per set</span>
-                </div>
-                <div className="text-[10px] text-slate-500 mt-1 font-mono">
-                  = {targetPieces} bars ({targetMeters}m @ 6m/bar)
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <label className="block font-bold text-slate-800 mb-1">Shift</label>
+            {/* Shift & Floor Operator Assignment */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <label className="block font-bold text-slate-800 mb-1">Production Shift</label>
                 <select
                   value={sessionShift}
                   onChange={(e) => setSessionShift(e.target.value as SessionShift)}
-                  className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs font-medium"
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-xs font-medium"
                 >
                   <option value="Morning Shift (06:00 - 14:00)">Morning (06:00 - 14:00)</option>
                   <option value="Evening Shift (14:00 - 22:00)">Evening (14:00 - 22:00)</option>
                   <option value="Night Shift (22:00 - 06:00)">Night (22:00 - 06:00)</option>
                 </select>
-                <div className="text-[10px] text-slate-500 mt-1 truncate">
-                  Operator: <strong>{sessionOperator}</strong>
-                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <label className="block font-bold text-slate-800 mb-1">Floor Operator</label>
+                <input
+                  type="text"
+                  value={sessionOperator}
+                  onChange={(e) => setSessionOperator(e.target.value)}
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-xs text-slate-800 font-medium"
+                />
               </div>
             </div>
 
