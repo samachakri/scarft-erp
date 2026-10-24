@@ -223,7 +223,17 @@ export interface RawMaterial {
   id: string;
   code: string; // e.g. RM-001
   name: string; // e.g. UPVC Resin
-  category: 'Base Polymer' | 'Filler' | 'Pigment' | 'Stabilizer & Additive' | 'Laminate & Gasket' | 'Reinforcement';
+  category:
+    | 'Base Polymer'
+    | 'Filler'
+    | 'Pigment'
+    | 'Stabilizer & Additive'
+    | 'Impact Modifier'
+    | 'Lubricant & Wax'
+    | 'Processing Aid'
+    | 'Laminate & Gasket'
+    | 'Reinforcement'
+    | (string & {});
   availableQuantity: number;
   reservedQuantity: number;
   minimumLevel: number;

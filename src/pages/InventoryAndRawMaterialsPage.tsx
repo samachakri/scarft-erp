@@ -40,7 +40,8 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
   const [showAddMaterialModal, setShowAddMaterialModal] = useState(false);
   const [newMatName, setNewMatName] = useState('');
   const [newMatCode, setNewMatCode] = useState('');
-  const [newMatCategory, setNewMatCategory] = useState<RawMaterial['category']>('Stabilizer & Additive');
+  const [newMatCategory, setNewMatCategory] = useState<string>('Stabilizer & Additive');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [newMatStock, setNewMatStock] = useState<number>(500);
   const [newMatMinLevel, setNewMatMinLevel] = useState<number>(200);
   const [newMatCost, setNewMatCost] = useState<number>(140);
@@ -1092,19 +1093,79 @@ export const InventoryAndRawMaterialsPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={newMatCategory}
-                    onChange={(e) => setNewMatCategory(e.target.value as RawMaterial['category'])}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-800"
-                  >
-                    <option value="Base Polymer">Base Polymer</option>
-                    <option value="Filler">Filler (CaCO3)</option>
-                    <option value="Pigment">Pigment (TiO2 / Toner)</option>
-                    <option value="Stabilizer & Additive">Stabilizer & Additive</option>
-                    <option value="Laminate & Gasket">Laminate & Gasket</option>
-                    <option value="Reinforcement">Reinforcement</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">Category *</label>
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded text-[10px] font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomCategory(false)}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer ${
+                          !isCustomCategory
+                            ? 'bg-white text-red-600 font-bold shadow-2xs'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Dropdown
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomCategory(true)}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer ${
+                          isCustomCategory
+                            ? 'bg-white text-red-600 font-bold shadow-2xs'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        ✏️ Write Manual
+                      </button>
+                    </div>
+                  </div>
+
+                  {!isCustomCategory ? (
+                    <select
+                      value={newMatCategory}
+                      onChange={(e) => {
+                        if (e.target.value === '__CUSTOM__') {
+                          setIsCustomCategory(true);
+                        } else {
+                          setNewMatCategory(e.target.value);
+                        }
+                      }}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-800 text-xs focus:border-red-500 focus:outline-none"
+                    >
+                      <option value="Base Polymer">Base Polymer</option>
+                      <option value="Filler">Filler (CaCO3)</option>
+                      <option value="Pigment">Pigment (TiO2 / Toner)</option>
+                      <option value="Stabilizer & Additive">Stabilizer & Additive</option>
+                      <option value="Impact Modifier">Impact Modifier (CPE)</option>
+                      <option value="Lubricant & Wax">Lubricant & Wax (PE Wax / Stearic)</option>
+                      <option value="Processing Aid">Processing Aid (ACR)</option>
+                      <option value="Laminate & Gasket">Laminate & Gasket</option>
+                      <option value="Reinforcement">Reinforcement</option>
+                      <option value="__CUSTOM__">✏️ + Write Custom Category...</option>
+                    </select>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={newMatCategory}
+                        onChange={(e) => setNewMatCategory(e.target.value)}
+                        placeholder="Write category manually..."
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded bg-white text-xs text-slate-900 focus:border-red-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomCategory(false);
+                          setNewMatCategory('Stabilizer & Additive');
+                        }}
+                        className="px-2 py-1 text-[10px] text-slate-500 hover:text-slate-800 border border-slate-200 rounded bg-slate-50 whitespace-nowrap cursor-pointer"
+                        title="Switch back to dropdown"
+                      >
+                        Dropdown
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
